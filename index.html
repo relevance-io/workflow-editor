@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JointJS Elbow Workflow</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jointjs/3.7.7/joint.min.css">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; touch-action: none; }
+        .wrapper { display: flex; height: 100vh; }
+        
+        #canvas-container {
+            flex-grow: 1;
+            background: #fdfdfd;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+        
+        #canvas-container:active { cursor: grabbing; }
+
+        .sidebar-left, .sidebar-right {
+            width: 260px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+        }
+
+        .sidebar-left { border-right: 1px solid #dee2e6; }
+        .sidebar-right { border-left: 1px solid #dee2e6; }
+
+        .sidebar-header {
+            padding: 10px 15px;
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 45px;
+        }
+
+        .header-actions { display: flex; gap: 4px; }
+
+        .header-btn {
+            background: none;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            color: #6c757d;
+        }
+
+        .header-btn:hover { background: #f1f3f5; color: #3498db; }
+        .header-btn.danger:hover { color: #e74c3c; border-color: #fadbd8; background: #fdf2f2; }
+
+        .component-list {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .node-template {
+            padding: 12px;
+            background: white;
+            border: 1px solid #ced4da;
+            cursor: grab;
+            text-align: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .node-template:hover {
+            border-color: #3498db;
+            background: #f1f9ff;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex; gap: 10px;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .controls button, .zoom-controls button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background: #fff;
+            color: #2c3e50;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .zoom-controls button {
+            width: 40px; height: 40px; padding: 0;
+            font-size: 16px; display: flex;
+            align-items: center; justify-content: center;
+        }
+
+        #paper { width: 100%; height: 100%; }
+
+        .joint-port { display: none; }
+        .joint-highlight-selection ~ .joint-port,
+        .joint-cell.selected .joint-port { display: block; }
+        /* Forces ports visible when dragging a link or its tools */
+        .joint-paper.dragging-link .joint-port { display: block !important; }
+
+        #context-menu {
+            position: absolute; display: none;
+            background: white; border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            z-index: 2000; border-radius: 4px; padding: 5px 0; min-width: 160px;
+        }
+
+        .menu-item { 
+            padding: 8px 15px; cursor: pointer; color: #333; font-size: 14px; 
+            display: flex; align-items: center; gap: 10px;
+        }
+        .menu-item:hover { background-color: #f1f1f1; }
+        .menu-item.danger:hover { color: #e74c3c; }
+
+        .properties-panel { 
+            padding: 15px; display: flex;
+            flex-direction: column; gap: 24px; overflow-y: auto;
+        }
+
+        .prop-group { display: flex; flex-direction: column; gap: 8px; }
+        .prop-group label { font-size: 12px; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .properties-panel input, .properties-panel textarea, .properties-panel select {
+            width: 100%; padding: 8px; border: 1px solid #ced4da;
+            border-radius: 4px; box-sizing: border-box; font-family: inherit; font-size: 13px;
+        }
+        .properties-panel textarea { resize: vertical; min-height: 60px; }
+        .color-input-wrapper { display: flex; gap: 8px; align-items: center; }
+        .color-input-wrapper input[type="color"] { width: 40px; padding: 2px; height: 32px; cursor: pointer; }
+
+        .image-input-wrapper { display: flex; gap: 8px; align-items: center; }
+        .upload-btn {
+            flex-shrink: 0; width: 40px; height: 34px; 
+            padding: 0 !important; display: flex; align-items: center; justify-content: center;
+            background: #fff; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;
+        }
+        .upload-btn:hover { background: #f1f3f5; border-color: #3498db; color: #3498db; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="sidebar-left">
+        <div class="sidebar-header">Library</div>
+        <div class="component-list">
+            <div class="node-template" draggable="true" data-type="rect">Rectangle</div>
+            <div class="node-template" draggable="true" data-type="square">Square</div>
+            <div class="node-template" draggable="true" data-type="ellipse">Ellipse</div>
+            <div class="node-template" draggable="true" data-type="circle">Circle</div>
+            <div class="node-template" draggable="true" data-type="diamond">Diamond</div>
+            <div class="node-template" draggable="true" data-type="triangle">Triangle</div>
+            <div class="node-template" draggable="true" data-type="hexagon">Hexagon</div>
+            <div class="node-template" draggable="true" data-type="pentagon">Pentagon</div>
+            <div class="node-template" draggable="true" data-type="octagon">Octagon</div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <div class="controls">
+            <button onclick="layout()">Canvas Button</button>
+        </div>
+        <div class="zoom-controls">
+            <button id="zoom-fit" title="Fit to Screen">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <button id="zoom-reset" title="Reset Zoom (100%)">1:1</button>
+            <button id="zoom-in">+</button>
+            <button id="zoom-out">-</button>
+            <button id="zoom-center" title="Center View">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+        <div id="paper"></div>
+        <div id="context-menu">
+            <div class="menu-item" id="clone-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Duplicate
+            </div>
+            <div class="menu-item danger" id="delete-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                Delete
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar-right">
+        <div class="sidebar-header">
+            <span>Properties</span>
+            <div class="header-actions" id="sidebar-actions" style="display: none;">
+                <button id="focus-element" class="header-btn" title="Center on Element">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button id="duplicate-element" class="header-btn" title="Duplicate">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button id="delete-element" class="header-btn danger" title="Delete">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="properties-panel" id="prop-panel" style="display: none;">
+            <div class="prop-group">
+                <label>Label</label>
+                <input type="text" id="prop-label" oninput="updateProperty('label/text', this.value, true)">
+            </div>
+            <div class="prop-group">
+                <label>Background Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="prop-bg-picker" oninput="syncColorInput('prop-bg-picker', 'prop-bg-hex', 'body/fill')">
+                    <input type="text" id="prop-bg-hex" placeholder="#FFFFFF" oninput="syncColorInput('prop-bg-hex', 'prop-bg-picker', 'body/fill')">
+                </div>
+            </div>
+            <div class="prop-group">
+                <label>Foreground Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="prop-fg-picker" oninput="syncColorInput('prop-fg-picker', 'prop-fg-hex', 'label/fill')">
+                    <input type="text" id="prop-fg-hex" placeholder="#000000" oninput="syncColorInput('prop-fg-hex', 'prop-fg-picker', 'label/fill')">
+                </div>
+            </div>
+            <div class="prop-group">
+                <label>Description</label>
+                <textarea id="prop-desc" oninput="updateProperty('description', this.value)"></textarea>
+            </div>
+            <div class="prop-group">
+                <label>Status</label>
+                <select id="prop-status" onchange="updateProperty('status', this.value)">
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Priority (1-10)</label>
+                <input type="number" id="prop-priority" min="1" max="10" oninput="updateProperty('priority', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Image URL</label>
+                <div class="image-input-wrapper">
+                    <input type="text" id="prop-image" placeholder="https://..." oninput="updateProperty('imageUrl', this.value)">
+                    <button class="upload-btn" onclick="document.getElementById('image-upload-input').click()" title="Upload Image">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <input type="file" id="image-upload-input" style="display: none;" accept="image/*" onchange="handleImageUpload(this)">
+                </div>
+            </div>
+        </div>
+        <div id="no-selection" style="padding: 20px; color: #adb5bd; font-size: 13px; text-align: center;">
+            Select an item to view properties
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.4.1/backbone-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jointjs/3.7.7/joint.min.js"></script>
+
+<script>
+    const namespace = joint.shapes;
+    const graph = new joint.dia.Graph({}, { cellNamespace: namespace });
+    const GRID_SIZE = 10;
+    const CLEARANCE_UNITS = 4;
+    
+    const paper = new joint.dia.Paper({
+        el: document.getElementById('paper'),
+        model: graph,
+        width: "100%",
+        height: "100%",
+        gridSize: GRID_SIZE,
+        drawGrid: { name: 'dot', color: '#e9ecef' },
+        background: { color: '#ffffff' },
+        cellNamespace: namespace,
+        defaultConnector: { name: 'rounded' },
+        defaultRouter: { 
+            name: 'manhattan', 
+            args: { 
+                step: GRID_SIZE, 
+                padding: 20,
+                maxIter: 200 
+            } 
+        },
+        interactive: { linkMove: true, vertexAdd: true, vertexMove: true },
+        linkPinning: false,
+        snapLinks: { radius: 25 },
+        markAvailable: true,
+        defaultLink: () => new joint.shapes.standard.Link({
+            attrs: { 
+                line: { 
+                    stroke: '#495057', strokeWidth: 2, 
+                    targetMarker: { 'type': 'path', 'd': 'M 10 -5 0 0 10 5 Z' } 
+                } 
+            }
+        }),
+        validateConnection: (vs, ms, vt, mt) => ms && mt && vs !== vt
+    });
+
+    function zoomAtPoint(factor, clientX, clientY) {
+        const currentScale = paper.scale().sx;
+        const newScale = Math.max(0.1, Math.min(10, currentScale * factor));
+        const rect = paper.el.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const translate = paper.translate();
+        const originX = (x - translate.tx) / currentScale;
+        const originY = (y - translate.ty) / currentScale;
+        const tx = x - originX * newScale;
+        const ty = y - originY * newScale;
+        paper.scale(newScale, newScale);
+        paper.translate(tx, ty);
+    }
+
+    paper.el.addEventListener('wheel', (evt) => {
+        evt.preventDefault();
+        if (evt.ctrlKey) {
+            const sensitivity = 0.0015;
+            const factor = Math.exp(-evt.deltaY * sensitivity);
+            zoomAtPoint(factor, evt.clientX, evt.clientY);
+        } else {
+            const currentTranslate = paper.translate();
+            paper.translate(currentTranslate.tx - evt.deltaX, currentTranslate.ty - evt.deltaY);
+        }
+    }, { passive: false });
+
+    document.getElementById('zoom-in').addEventListener('click', () => {
+        const rect = paper.el.getBoundingClientRect();
+        zoomAtPoint(1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    });
+
+    document.getElementById('zoom-out').addEventListener('click', () => {
+        const rect = paper.el.getBoundingClientRect();
+        zoomAtPoint(0.8, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    });
+
+    document.getElementById('zoom-reset').addEventListener('click', () => {
+        const rect = paper.el.getBoundingClientRect();
+        const currentScale = paper.scale().sx;
+        zoomAtPoint(1 / currentScale, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    });
+
+    document.getElementById('zoom-fit').addEventListener('click', () => {
+        paper.scaleContentToFit({ padding: 50, minScale: 0.2, maxScale: 2 });
+    });
+
+    document.getElementById('zoom-center').addEventListener('click', () => {
+        const bbox = graph.getBBox();
+        if (!bbox) return;
+        const paperSize = paper.getComputedSize();
+        paper.scale(1, 1);
+        const tx = (paperSize.width / 2) - (bbox.x + bbox.width / 2);
+        const ty = (paperSize.height / 2) - (bbox.y + bbox.height / 2);
+        paper.translate(tx, ty);
+    });
+
+    function focusSelected() {
+        if (selectedCellView && selectedCellView.model.isElement()) {
+            const center = selectedCellView.model.getBBox().center();
+            const paperSize = paper.getComputedSize();
+            paper.scale(1, 1);
+            const tx = (paperSize.width / 2) - center.x;
+            const ty = (paperSize.height / 2) - center.y;
+            paper.translate(tx, ty);
+        }
+    }
+
+    function duplicateSelected() {
+        if (selectedCellView && selectedCellView.model.isElement()) {
+            const clone = selectedCellView.model.clone();
+            clone.translate(40, 40);
+            clone.addTo(graph);
+            const view = paper.findViewByModel(clone);
+            if (view) paper.trigger('element:pointerdown', view, {});
+        }
+    }
+
+    function deleteSelected() {
+        if (selectedCellView) selectedCellView.model.remove();
+        deselectAll();
+    }
+
+    document.getElementById('focus-element').addEventListener('click', focusSelected);
+    document.getElementById('duplicate-element').addEventListener('click', duplicateSelected);
+    document.getElementById('delete-element').addEventListener('click', deleteSelected);
+
+    const CustomSourceArrowhead = joint.linkTools.SourceArrowhead.extend({
+        tagName: 'circle',
+        attributes: { 'r': 6, 'fill': '#3498db', 'stroke': '#fff', 'stroke-width': 2, 'cursor': 'move' }
+    });
+
+    let selectedCellView = null;
+    const menu = document.getElementById('context-menu');
+    const container = document.getElementById('canvas-container');
+
+    function deselectAll() {
+        if (selectedCellView) selectedCellView.el.classList.remove('selected');
+        paper.removeTools();
+        joint.highlighters.stroke.removeAll(paper);
+        document.getElementById('prop-panel').style.display = 'none';
+        document.getElementById('sidebar-actions').style.display = 'none';
+        document.getElementById('no-selection').style.display = 'block';
+        selectedCellView = null;
+    }
+
+    paper.on('cell:contextmenu', (cellView, evt) => {
+        evt.preventDefault();
+        selectedCellView = cellView;
+        const rect = container.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.left = (evt.clientX - rect.left) + 'px';
+        menu.style.top = (evt.clientY - rect.top) + 'px';
+    });
+
+    function syncColorInput(sourceId, targetId, attrPath) {
+        const source = document.getElementById(sourceId);
+        const target = document.getElementById(targetId);
+        target.value = source.value;
+        updateProperty(attrPath, source.value, true);
+    }
+
+    function handleImageUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            document.getElementById('prop-image').value = base64;
+            updateProperty('imageUrl', base64);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    paper.on('element:pointerdown', (cellView) => {
+        deselectAll();
+        cellView.model.toFront();
+        selectedCellView = cellView;
+        cellView.el.classList.add('selected');
+        joint.highlighters.stroke.add(cellView, 'root', 'selection', {
+            padding: 5, attrs: { 'stroke': '#3498db', 'stroke-width': 3 }
+        });
+        document.getElementById('prop-panel').style.display = 'block';
+        document.getElementById('no-selection').style.display = 'none';
+        document.getElementById('sidebar-actions').style.display = 'flex';
+        
+        document.getElementById('prop-label').value = cellView.model.attr('label/text') || '';
+        document.getElementById('prop-desc').value = cellView.model.get('description') || '';
+        document.getElementById('prop-status').value = cellView.model.get('status') || 'pending';
+        document.getElementById('prop-priority').value = cellView.model.get('priority') || 1;
+        document.getElementById('prop-image').value = cellView.model.get('imageUrl') || '';
+        
+        const fill = cellView.model.attr('body/fill') || '#ffffff';
+        const textFill = cellView.model.attr('label/fill') || '#212529';
+        
+        document.getElementById('prop-bg-hex').value = fill;
+        document.getElementById('prop-bg-picker').value = fill;
+        document.getElementById('prop-fg-hex').value = textFill;
+        document.getElementById('prop-fg-picker').value = textFill;
+    });
+
+    // Detect when starting a connection from a port
+    paper.on('cell:pointerdown', (cellView, evt) => {
+        const magnet = evt.target.closest('.joint-port');
+        if (magnet) paper.el.classList.add('dragging-link');
+    });
+
+    // Detect when moving existing arrowheads/tools
+    paper.on('tool:pointerdown', (linkView, toolView) => {
+        const isArrow = toolView instanceof joint.linkTools.SourceArrowhead || 
+                        toolView instanceof joint.linkTools.TargetArrowhead ||
+                        toolView instanceof CustomSourceArrowhead;
+        if (isArrow) paper.el.classList.add('dragging-link');
+    });
+
+    paper.on('cell:pointerup link:pointerup tool:pointerup', () => {
+        paper.el.classList.remove('dragging-link');
+    });
+
+    paper.on('cell:pointerup', (cellView) => {
+        if (cellView.model.isElement()) {
+            const bbox = cellView.model.getBBox();
+            const pos = findNearestClearPosition(bbox.x, bbox.y, bbox.width, bbox.height, cellView.model);
+            cellView.model.position(pos.x, pos.y);
+        }
+    });
+
+    $(document).on('mouseup', () => paper.el.classList.remove('dragging-link'));
+
+    function updateProperty(key, val, isAttr = false) {
+        if (!selectedCellView || !selectedCellView.model.isElement()) return;
+        if (isAttr) {
+            selectedCellView.model.attr(key, val);
+        } else {
+            selectedCellView.model.set(key, val);
+            if (key === 'description') selectedCellView.model.attr('descriptionLabel/text', val);
+            if (key === 'imageUrl') {
+                selectedCellView.model.attr('image/xlink:href', val);
+                selectedCellView.model.attr('image/display', val ? 'block' : 'none');
+            }
+        }
+        autoSize(selectedCellView.model);
+    }
+
+    function autoSize(element) {
+        const view = paper.findViewByModel(element);
+        if (!view) return;
+        const labelNode = view.el.querySelector('.label');
+        const descNode = view.el.querySelector('.descriptionLabel');
+        if (!labelNode || !descNode) return;
+        const imageUrl = element.get('imageUrl');
+        const type = element.get('type');
+        const labelBBox = labelNode.getBBox();
+        const descBBox = descNode.getBBox();
+        const descText = element.attr('descriptionLabel/text') || '';
+        const padding = 15;
+        const spacing = 2;
+        const imgSize = imageUrl ? 32 : 0;
+        const imgSpacing = imageUrl ? 10 : 0;
+        const textW = Math.max(labelBBox.width, descBBox.width);
+        const totalContentW = imgSize + imgSpacing + textW;
+        let width = Math.max(140, padding + totalContentW + padding);
+        const totalTextH = descText ? (labelBBox.height + spacing + descBBox.height) : labelBBox.height;
+        let height = Math.max(50, padding + Math.max(imgSize, totalTextH) + padding);
+
+        if (type === 'diamond') {
+            const side = Math.max(width, height);
+            width = height = side;
+        } else if (['triangle', 'hexagon', 'pentagon', 'octagon'].includes(type)) {
+            const targetRatio = 1.2;
+            if (width / height > targetRatio) height = width / targetRatio;
+            else width = height * targetRatio;
+            if (type === 'triangle') { width *= 1.25; height *= 1.25; }
+        }
+
+        const startX = (width - totalContentW) / 2;
+        element.attr('image', { refX: 0, refX2: startX, refY: 0.5, y: -imgSize / 2, width: imgSize, height: imgSize });
+        const textCenterX = startX + imgSize + imgSpacing + (textW / 2);
+        
+        if (descText) {
+            const contentY = (height - totalTextH) / 2;
+            element.attr('label', { refX: 0, refX2: textCenterX, refY: 0, refY2: contentY + (labelBBox.height / 2), textAnchor: 'middle', textVerticalAnchor: 'middle' });
+            element.attr('descriptionLabel', { refX: 0, refX2: textCenterX, refY: 0, refY2: contentY + labelBBox.height + (descBBox.height / 2) + spacing, textAnchor: 'middle', textVerticalAnchor: 'middle' });
+        } else {
+            element.attr('label', { refX: 0, refX2: textCenterX, refY: 0.5, refY2: 0, textAnchor: 'middle', textVerticalAnchor: 'middle' });
+        }
+        element.resize(width, height);
+    }
+
+    document.getElementById('clone-item').addEventListener('click', () => { duplicateSelected(); menu.style.display = 'none'; });
+    document.getElementById('delete-item').addEventListener('click', () => { deleteSelected(); menu.style.display = 'none'; });
+    window.addEventListener('click', (e) => { if (!e.target.closest('#context-menu')) menu.style.display = 'none'; });
+
+    paper.on('blank:pointerdown', (evt) => {
+        deselectAll();
+        const startX = evt.clientX;
+        const startY = evt.clientY;
+        const origin = paper.translate();
+        const onMouseMove = (e) => paper.translate(origin.tx + (e.clientX - startX), origin.ty + (e.clientY - startY));
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    paper.on('link:pointerdown', (linkView) => {
+        deselectAll();
+        linkView.model.toFront();
+        const tools = new joint.dia.ToolsView({
+            tools: [
+                new joint.linkTools.Vertices(),
+                new CustomSourceArrowhead(),
+                new joint.linkTools.TargetArrowhead({ offset: -1 }),
+                new joint.linkTools.Remove({ distance: 20 })
+            ]
+        });
+        linkView.addTools(tools);
+    });
+
+    function findNearestClearPosition(x, y, w, h, excludeElement = null) {
+        const clearancePx = CLEARANCE_UNITS * GRID_SIZE;
+        let currentX = Math.round(x / GRID_SIZE) * GRID_SIZE;
+        let currentY = Math.round(y / GRID_SIZE) * GRID_SIZE;
+        
+        const isPositionObstructed = (px, py) => {
+            const rect = new joint.g.Rect(px, py, w, h).inflate(clearancePx);
+            return graph.getElements().some(el => {
+                if (excludeElement && el.id === excludeElement.id) return false;
+                return rect.intersect(el.getBBox().clone().inflate(clearancePx));
+            });
+        };
+
+        if (!isPositionObstructed(currentX, currentY)) return { x: currentX, y: currentY };
+
+        let spiralLevel = 1;
+        while (spiralLevel < 30) {
+            for (let dx = -spiralLevel; dx <= spiralLevel; dx++) {
+                for (let dy = -spiralLevel; dy <= spiralLevel; dy++) {
+                    if (Math.abs(dx) !== spiralLevel && Math.abs(dy) !== spiralLevel) continue;
+                    const testX = currentX + (dx * GRID_SIZE);
+                    const testY = currentY + (dy * GRID_SIZE);
+                    if (!isPositionObstructed(testX, testY)) return { x: testX, y: testY };
+                }
+            }
+            spiralLevel++;
+        }
+        return { x: currentX, y: currentY };
+    }
+
+    function createNode(type, x, y, label) {
+        let shape;
+        let points = [];
+        const localPoint = paper.clientToLocalPoint({ x, y });
+        const initialW = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 140;
+        const initialH = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 50;
+        
+        const pos = findNearestClearPosition(localPoint.x - initialW / 2, localPoint.y - initialH / 2, initialW, initialH);
+
+        const baseMarkup = [
+            { tagName: 'rect', selector: 'body', className: 'body' },
+            { tagName: 'image', selector: 'image', className: 'image' },
+            { tagName: 'text', selector: 'label', className: 'label' },
+            { tagName: 'text', selector: 'descriptionLabel', className: 'descriptionLabel' }
+        ];
+        
+        switch(type) {
+            case 'diamond':
+                shape = new namespace.standard.Polygon();
+                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                shape.attr({ body: { refPoints: '0,10 10,0 20,10 10,20' }});
+                break;
+            case 'triangle':
+                shape = new namespace.standard.Polygon();
+                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                points = [[10,0], [20,20], [0,20]];
+                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
+                break;
+            case 'hexagon':
+                shape = new namespace.standard.Polygon();
+                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                points = [[5,0], [15,0], [20,10], [15,20], [5,20], [0,10]];
+                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
+                break;
+            case 'pentagon':
+                shape = new namespace.standard.Polygon();
+                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                points = [[10,0], [20,7], [16,20], [4,20], [0,7]];
+                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
+                break;
+            case 'octagon':
+                shape = new namespace.standard.Polygon();
+                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                points = [[6,0], [14,0], [20,6], [20,14], [14,20], [6,20], [0,14], [0,6]];
+                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
+                break;
+            case 'ellipse':
+            case 'circle':
+                shape = new namespace.standard.Ellipse();
+                shape.markup = [{ tagName: 'ellipse', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
+                break;
+            default:
+                shape = new namespace.standard.Rectangle();
+                shape.markup = baseMarkup;
+        }
+
+        shape.position(pos.x, pos.y).resize(initialW, initialH);
+        
+        const portData = [];
+        if (points.length > 0) {
+            for (let i = 0; i < points.length; i++) {
+                const p1 = points[i], p2 = points[(i + 1) % points.length];
+                const midX = (p1[0] + p2[0]) / 2, midY = (p1[1] + p2[1]) / 2;
+                portData.push({ group: 'all', args: { x: (midX / 20) * 100 + '%', y: (midY / 20) * 100 + '%' } });
+            }
+        } else {
+            portData.push({ group: 'all' }, { group: 'all' }, { group: 'all' }, { group: 'all' });
+        }
+
+        shape.prop('ports/groups', { 
+            all: { 
+                position: points.length > 0 ? 'absolute' : 'ellipseSpread', 
+                attrs: { circle: { r: 6, fill: '#3498db', magnet: true, stroke: '#fff', strokeWidth: 2 } } 
+            } 
+        });
+        shape.addPorts(portData);
+
+        shape.attr({
+            body: { fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2, rx: 5, ry: 5 },
+            image: { display: 'none' },
+            label: { text: label, fill: '#212529', fontSize: 13, fontWeight: 'bold', pointerEvents: 'none' },
+            descriptionLabel: { text: '', fill: '#6c757d', fontSize: 11, pointerEvents: 'none' }
+        });
+        shape.set({ type, description: '', status: 'pending', priority: 1, imageUrl: '' });
+        shape.addTo(graph);
+        setTimeout(() => {
+            const view = paper.findViewByModel(shape);
+            if (view) paper.trigger('element:pointerdown', view, {});
+            autoSize(shape);
+        }, 50);
+        return shape;
+    }
+
+    container.addEventListener('dragover', e => e.preventDefault());
+    container.addEventListener('drop', e => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData('type');
+        createNode(type, e.clientX, e.clientY, type.toUpperCase());
+    });
+    document.querySelectorAll('.node-template').forEach(el => el.addEventListener('dragstart', e => e.dataTransfer.setData('type', e.target.dataset.type)));
+
+    function layout() {}
+    createNode('ellipse', 400, 100, 'ELLIPSE');
+    createNode('rect', 400, 300, 'RECTANGLE');
+</script>
+</body>
+</html>
