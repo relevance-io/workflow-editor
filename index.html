@@ -503,10 +503,15 @@
     function toggleSidebar(id) {
         const sidebar = document.getElementById(id);
         const icon = document.getElementById(id === 'left-sidebar' ? 'left-icon' : 'right-icon');
+
+        // Snapshot translate and canvas width before any change
+        const translateBefore = paper.translate();
+        const containerBefore = document.getElementById('canvas-container').clientWidth;
+
         const isCollapsed = sidebar.classList.toggle('collapsed');
         icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
 
-        // On mobile: closing the other sidebar when expanding
+        // On mobile: collapse the other sidebar when expanding
         if (isMobile() && !isCollapsed) {
             const otherId = id === 'left-sidebar' ? 'right-sidebar' : 'left-sidebar';
             const other = document.getElementById(otherId);
@@ -519,13 +524,21 @@
 
         const resizeInterval = setInterval(() => {
             const container = document.getElementById('canvas-container');
-            paper.setDimensions(container.clientWidth, container.clientHeight);
+            const containerNow = container.clientWidth;
+            // Compensate translation so content doesn't drift
+            const delta = containerNow - containerBefore;
+            const compensate = id === 'left-sidebar'
+                ? (isCollapsed ? 0 : -delta)   // left sidebar expanding pushes canvas right
+                : 0;
+            paper.setDimensions(containerNow, container.clientHeight);
+            paper.translate(translateBefore.tx + compensate, translateBefore.ty);
         }, 16);
         setTimeout(() => clearInterval(resizeInterval), 350);
     }
 
     function collapseBothSidebars() {
         if (!isMobile()) return;
+        const translateBefore = paper.translate();
         ['left-sidebar', 'right-sidebar'].forEach(id => {
             const sidebar = document.getElementById(id);
             const icon = document.getElementById(id === 'left-sidebar' ? 'left-icon' : 'right-icon');
@@ -537,6 +550,7 @@
         const resizeInterval = setInterval(() => {
             const container = document.getElementById('canvas-container');
             paper.setDimensions(container.clientWidth, container.clientHeight);
+            paper.translate(translateBefore.tx, translateBefore.ty);
         }, 16);
         setTimeout(() => clearInterval(resizeInterval), 350);
     }
@@ -684,20 +698,22 @@
     }
 
     let pointerDownPos = null;
+    let wasAlreadySelected = false;
 
     paper.on('element:pointerdown', (cellView, evt) => {
         pointerDownPos = { x: evt.clientX, y: evt.clientY };
+        wasAlreadySelected = selectedCellView && selectedCellView.model.id === cellView.model.id;
     });
 
     paper.on('element:pointerup', (cellView, evt) => {
         const dx = Math.abs(evt.clientX - (pointerDownPos?.x ?? evt.clientX));
         const dy = Math.abs(evt.clientY - (pointerDownPos?.y ?? evt.clientY));
-        if (dx < 5 && dy < 5) {
-            collapseBothSidebars();
+        if (dx < 5 && dy < 5 && wasAlreadySelected) {
             const right = document.getElementById('right-sidebar');
             if (right.classList.contains('collapsed')) toggleSidebar('right-sidebar');
         }
         pointerDownPos = null;
+        wasAlreadySelected = false;
     });
 
     paper.on('element:pointerdown', (cellView) => {
