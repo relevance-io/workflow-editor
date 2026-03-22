@@ -819,8 +819,8 @@ class Canvas extends EventEmitter {
       )
     };
 
-    // Restore shapes
-    const idMap = {}; // old id -> Shape (for reconnecting links)
+    // Restore shapes first, then connections after autoSize settles
+    const idMap = {};
     shapes.forEach(s => {
       const Cls = classMap[s.shapeClass];
       if (!Cls) { console.warn(`Unknown shape class: ${s.shapeClass}`); return; }
@@ -837,30 +837,59 @@ class Canvas extends EventEmitter {
       cell.addTo(this._graph);
       this._shapes.set(cell.id, shape);
       idMap[s.id] = shape;
-      setTimeout(() => {
-        this._autoSize(cell);
-        if (shape._renderFn) shape._renderFn(shape);
-      }, 50);
     });
 
-    // Restore connections
-    connections.forEach(c => {
-      const source = idMap[c.sourceId];
-      const target = idMap[c.targetId];
-      if (!source || !target) return;
-      const conn = this._createConnection(source, target, c.sourcePort, c.targetPort);
-      conn.label         = c.label;
-      conn.labelColor    = c.labelColor;
-      conn.labelFontSize = c.labelFontSize;
-      conn.lineColor     = c.lineColor;
-      conn.lineWidth     = c.lineWidth;
-      conn.lineStyle     = c.lineStyle;
-      conn.sourceArrow   = c.sourceArrow;
-      conn.targetArrow   = c.targetArrow;
-      conn.connectorType = c.connectorType;
-      conn.description   = c.description;
-      if (c.vertices?.length) conn._link.vertices(c.vertices);
-    });
+    // AutoSize all shapes first, then restore connections
+    setTimeout(() => {
+      [...this._shapes.values()].forEach(shape => {
+        this._autoSize(shape._cell);
+        if (shape._renderFn) shape._renderFn(shape);
+      });
+
+      setTimeout(() => {
+        connections.forEach(c => {
+          const source = idMap[c.sourceId];
+          const target = idMap[c.targetId];
+          if (!source || !target) return;
+
+          const link = new joint.shapes.standard.Link({
+            attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: MARKERS.classic } }
+          });
+
+          // Restore exact port assignments
+          const srcPorts = source._cell.getPorts();
+          const tgtPorts = target._cell.getPorts();
+          const srcPort  = c.sourcePort !== null && srcPorts[c.sourcePort - 1] ? srcPorts[c.sourcePort - 1].id : srcPorts[0]?.id;
+          const tgtPort  = c.targetPort !== null && tgtPorts[c.targetPort - 1] ? tgtPorts[c.targetPort - 1].id : tgtPorts[0]?.id;
+          link.source({ id: source._cell.id, port: srcPort });
+          link.target({ id: target._cell.id, port: tgtPort });
+          link.addTo(this._graph);
+
+          const conn = new Connection(link, source, target, this);
+          this._connections.set(link.id, conn);
+
+          // Restore all connection properties
+          if (c.label)         conn.label         = c.label;
+          if (c.labelColor)    conn.labelColor     = c.labelColor;
+          if (c.labelFontSize) conn.labelFontSize  = c.labelFontSize;
+          conn.lineColor     = c.lineColor;
+          conn.lineWidth     = c.lineWidth;
+          conn.lineStyle     = c.lineStyle;
+          conn.sourceArrow   = c.sourceArrow;
+          conn.targetArrow   = c.targetArrow;
+          conn.connectorType = c.connectorType;
+          if (c.description)   conn.description   = c.description;
+          if (c.vertices?.length) link.vertices(c.vertices);
+
+          this.emit('connection:add', conn);
+        });
+
+        // Run auto-port distributor after all connections are restored
+        if (this._autoPortEnabled) {
+          this._graph.getElements().forEach(el => this._autoPortDistributor(el));
+        }
+      }, 50);
+    }, 50);
 
     return this;
   }
