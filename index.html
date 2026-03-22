@@ -833,6 +833,8 @@ class Canvas extends EventEmitter {
       if (!Cls) { console.warn(`Unknown shape class: ${s.shapeClass}`); return; }
       const shape = new Cls({ ...s.props, ...s.customProps });
       const cell  = shape._buildCell({ x: s.x, y: s.y }, joint.shapes);
+      // Set saved size immediately so port positions are correct before connections are wired
+      if (s.width && s.height) cell.resize(s.width, s.height);
       cell.attr('label/text', s.props.label);
       shape._cell   = cell;
       shape._canvas = this;
@@ -846,55 +848,51 @@ class Canvas extends EventEmitter {
       idMap[s.id] = shape;
     });
 
-    // AutoSize all shapes first, then restore connections
-    setTimeout(() => {
-      [...this._shapes.values()].forEach(shape => {
-        this._autoSize(shape._cell);
-        if (shape._renderFn) shape._renderFn(shape);
+    // Restore connections synchronously — shapes are already at correct size
+    const prevAutoPort = this._autoPortEnabled;
+    this._autoPortEnabled = false;
+
+    connections.forEach(c => {
+      const source = idMap[c.sourceId];
+      const target = idMap[c.targetId];
+      if (!source || !target) return;
+
+      const link = new joint.shapes.standard.Link({
+        attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: MARKERS.classic } }
       });
 
-      setTimeout(() => {
-        const prevAutoPort = this._autoPortEnabled;
-        this._autoPortEnabled = false; // disable during restore
+      const srcPorts = source._cell.getPorts();
+      const tgtPorts = target._cell.getPorts();
+      const srcPort  = c.sourcePort != null ? srcPorts[c.sourcePort - 1]?.id : srcPorts[0]?.id;
+      const tgtPort  = c.targetPort != null ? tgtPorts[c.targetPort - 1]?.id : tgtPorts[0]?.id;
+      link.source({ id: source._cell.id, port: srcPort });
+      link.target({ id: target._cell.id, port: tgtPort });
+      link.addTo(this._graph);
 
-        connections.forEach(c => {
-          const source = idMap[c.sourceId];
-          const target = idMap[c.targetId];
-          if (!source || !target) return;
+      const conn = new Connection(link, source, target, this);
+      this._connections.set(link.id, conn);
 
-          const link = new joint.shapes.standard.Link({
-            attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: MARKERS.classic } }
-          });
+      if (c.label)          conn.label         = c.label;
+      if (c.labelColor)     conn.labelColor    = c.labelColor;
+      if (c.labelFontSize)  conn.labelFontSize = c.labelFontSize;
+      conn.lineColor     = c.lineColor;
+      conn.lineWidth     = c.lineWidth;
+      conn.lineStyle     = c.lineStyle;
+      conn.sourceArrow   = c.sourceArrow;
+      conn.targetArrow   = c.targetArrow;
+      conn.connectorType = c.connectorType;
+      if (c.description)    conn.description   = c.description;
+      if (c.vertices?.length) link.vertices(c.vertices);
 
-          const srcPorts = source._cell.getPorts();
-          const tgtPorts = target._cell.getPorts();
-          const srcPort  = c.sourcePort != null ? srcPorts[c.sourcePort - 1]?.id : srcPorts[0]?.id;
-          const tgtPort  = c.targetPort != null ? tgtPorts[c.targetPort - 1]?.id : tgtPorts[0]?.id;
-          link.source({ id: source._cell.id, port: srcPort });
-          link.target({ id: target._cell.id, port: tgtPort });
-          link.addTo(this._graph);
+      this.emit('connection:add', conn);
+    });
 
-          const conn = new Connection(link, source, target, this);
-          this._connections.set(link.id, conn);
+    this._autoPortEnabled = prevAutoPort;
 
-          if (c.label)         conn.label         = c.label;
-          if (c.labelColor)    conn.labelColor     = c.labelColor;
-          if (c.labelFontSize) conn.labelFontSize  = c.labelFontSize;
-          conn.lineColor     = c.lineColor;
-          conn.lineWidth     = c.lineWidth;
-          conn.lineStyle     = c.lineStyle;
-          conn.sourceArrow   = c.sourceArrow;
-          conn.targetArrow   = c.targetArrow;
-          conn.connectorType = c.connectorType;
-          if (c.description)   conn.description   = c.description;
-          if (c.vertices?.length) link.vertices(c.vertices);
-
-          this.emit('connection:add', conn);
-        });
-
-        this._autoPortEnabled = prevAutoPort;
-      }, 50);
-    }, 50);
+    // Apply render functions after everything is in place
+    [...this._shapes.values()].forEach(shape => {
+      if (shape._renderFn) shape._renderFn(shape);
+    });
 
     return this;
   }
