@@ -490,7 +490,7 @@
             name: 'manhattan', 
             args: { step: GRID_SIZE, padding: 20, maxIter: 200 } 
         },
-        interactive: { linkMove: true, vertexAdd: true, vertexMove: true },
+        interactive: { linkMove: true, vertexAdd: true, vertexMove: true, elementMove: true },
         linkPinning: false,
         snapLinks: { radius: 25 },
         markAvailable: true,
@@ -918,12 +918,13 @@
         if (!isMobile()) return;
         if (e.touches.length === 1) {
             const t = e.touches[0];
-            // Only pan if touch starts on blank (not on a cell)
             const el = document.elementFromPoint(t.clientX, t.clientY);
             const onCell = el && el.closest('.joint-cell');
             if (onCell) return;
+            e.stopPropagation(); // prevent JointJS blank:pointerdown from firing
             touchState = { type: 'pan', x: t.clientX, y: t.clientY, origin: paper.translate() };
         } else if (e.touches.length === 2) {
+            e.stopPropagation();
             const [t1, t2] = [e.touches[0], e.touches[1]];
             touchState = {
                 type: 'pinch',
@@ -940,7 +941,8 @@
         e.preventDefault();
         if (touchState.type === 'pan' && e.touches.length === 1) {
             const t = e.touches[0];
-            const dx = t.clientX - touchState.x, dy = t.clientY - touchState.y;
+            const dx = t.clientX - touchState.x;
+            const dy = t.clientY - touchState.y;
             paper.translate(touchState.origin.tx + dx, touchState.origin.ty + dy);
         } else if (touchState.type === 'pinch' && e.touches.length === 2) {
             const [t1, t2] = [e.touches[0], e.touches[1]];
@@ -957,9 +959,15 @@
         }
     }, { passive: false });
 
-    paper.el.addEventListener('touchend', () => {
+    paper.el.addEventListener('touchend', (e) => {
         if (!isMobile()) return;
-        touchState = null;
+        // If switching from pinch to single finger, reset pan origin
+        if (touchState?.type === 'pinch' && e.touches.length === 1) {
+            const t = e.touches[0];
+            touchState = { type: 'pan', x: t.clientX, y: t.clientY, origin: paper.translate() };
+        } else {
+            touchState = null;
+        }
     }, { passive: true });
 
     function findNearestClearPosition(x, y, w, h, exclude = null) {
