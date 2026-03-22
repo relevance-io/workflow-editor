@@ -71,8 +71,9 @@
     /* ── Properties ── */
     .wf-properties {
       padding: 15px; display: flex; flex-direction: column;
-      gap: 18px; overflow-y: auto; flex: 1 1 0; min-height: 0;
+      gap: 12px; overflow-y: auto; flex: 1 1 0; min-height: 0;
     }
+    .wf-custom-props { display: flex; flex-direction: column; gap: 12px; }
     .wf-no-selection { padding: 20px; color: #adb5bd; font-size: 13px; text-align: center; }
     .wf-prop-group { display: flex; flex-direction: column; gap: 6px; }
     .wf-prop-group label { font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -328,12 +329,25 @@ class Connection extends EventEmitter {
 // Shape
 // ═══════════════════════════════════════════════════════════════
 class Shape extends EventEmitter {
-  constructor(label = '') {
+  constructor(opts = {}) {
     super();
-    this._label = label;
-    this._cell  = null; // set by Canvas when added
+    this._label  = typeof opts === 'string' ? opts : (opts.label ?? '');
+    this._initOpts = typeof opts === 'string' ? {} : opts;
+    this._cell   = null;
     this._canvas = null;
+    this._schema = {};
+    this._customProps = {};
+    this._renderFn = null;
   }
+
+  getCustomProperty(key)      { return this._customProps[key]; }
+  setCustomProperty(key, val) {
+    this._customProps[key] = val;
+    this._cell?.set(`custom_${key}`, val);
+    if (this._renderFn) this._renderFn(this);
+    this.emit('change', this);
+  }
+  getSchema() { return this._schema; }
 
   get id()     { return this._cell?.id ?? null; }
 
@@ -436,6 +450,57 @@ class Shape extends EventEmitter {
 
   _getShapeType() { return 'rect'; }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Shape.define — custom shape factory
+// ═══════════════════════════════════════════════════════════════
+Shape.define = function(BaseClass, defaults = {}, schema = {}, renderFn = null) {
+  class CustomShape extends BaseClass {
+    constructor(opts = {}) {
+      super();
+      this._customProps  = {};
+      this._schema       = schema;
+      this._renderFn     = renderFn;
+      this._defaultOpts  = defaults;
+
+      // Apply defaults then opts for built-in properties
+      const merged = { ...defaults, ...opts };
+      const builtIn = ['label','labelColor','labelFontSize','description','descriptionColor',
+        'backgroundColor','borderColor','borderWidth','imageUrl','imageWidth','imageHeight',
+        'status','priority'];
+      builtIn.forEach(k => { if (merged[k] !== undefined) this[`_init_${k}`] = merged[k]; });
+      this._label = merged.label ?? defaults.label ?? '';
+
+      // Apply custom property defaults then opts
+      Object.entries(schema).forEach(([key, def]) => {
+        this._customProps[key] = opts[key] !== undefined ? opts[key] : def.default;
+      });
+    }
+
+    getCustomProperty(key)      { return this._customProps[key]; }
+    setCustomProperty(key, val) {
+      if (!(key in this._schema)) throw new Error(`Unknown custom property: ${key}`);
+      this._customProps[key] = val;
+      this._cell?.set(`custom_${key}`, val);
+      if (this._renderFn) this._renderFn(this);
+      this.emit('change', this);
+    }
+
+    getSchema() { return this._schema; }
+
+    // Override _buildCell to re-apply init values after cell creation
+    _buildCell(pos, ns) {
+      const cell = super._buildCell(pos, ns);
+      return cell;
+    }
+  }
+
+  // Copy shape type methods from base
+  CustomShape.prototype._getShapeType = BaseClass.prototype._getShapeType;
+  Object.defineProperty(CustomShape.prototype, 'portCount', Object.getOwnPropertyDescriptor(BaseClass.prototype, 'portCount') || { get() { return 4; } });
+
+  return CustomShape;
+};
 
 // ═══════════════════════════════════════════════════════════════
 // Shape subclasses
@@ -584,7 +649,21 @@ class Canvas extends EventEmitter {
     }
   }
 
-  // ── Public: shapes ──
+  // ── Public: register shape in library ──
+  registerShape(label, ShapeClass) {
+    const el = this._library.appendChild(this._createEl('div', 'wf-node-template'));
+    el.textContent = label;
+    el.draggable   = true;
+    el.dataset.shapeLabel = label;
+    el.addEventListener('click', () => {
+      if (!this._isMobile()) return;
+      this.addShape(new ShapeClass());
+      if (!this._leftSidebar.classList.contains('wf-collapsed')) this._toggleSidebar(this._leftSidebar);
+    });
+    el.addEventListener('dragstart', e => e.dataTransfer.setData('customShape', label));
+    this._registeredShapes = this._registeredShapes || {};
+    this._registeredShapes[label] = ShapeClass;
+  }
   addShape(shape, x, y) {
     const ns  = joint.shapes;
     const container = this._canvasContainer;
@@ -598,9 +677,29 @@ class Canvas extends EventEmitter {
     cell.attr('label/text', shape._label);
     shape._cell   = cell;
     shape._canvas = this;
+
+    // Apply built-in init options
+    const builtIn = ['label','labelColor','labelFontSize','description','descriptionColor',
+      'backgroundColor','borderColor','borderWidth','imageUrl','imageWidth','imageHeight',
+      'status','priority'];
+    const opts = shape._initOpts || {};
+    builtIn.forEach(k => {
+      const v = opts[k] ?? shape[`_init_${k}`];
+      if (v !== undefined) shape[k] = v;
+    });
+
+    // Apply custom property defaults to cell
+    Object.entries(shape._customProps).forEach(([key, val]) => {
+      cell.set(`custom_${key}`, val);
+    });
+
     cell.addTo(this._graph);
     this._shapes.set(cell.id, shape);
-    setTimeout(() => this._autoSize(cell), 50);
+
+    setTimeout(() => {
+      this._autoSize(cell);
+      if (shape._renderFn) shape._renderFn(shape);
+    }, 50);
     this.emit('shape:add', shape);
     return shape;
   }
@@ -801,10 +900,7 @@ class Canvas extends EventEmitter {
       <div class="wf-prop-row">
         <div class="wf-prop-group"><label>Image Width</label><input type="number" data-prop="imageWidth" min="0"></div>
         <div class="wf-prop-group"><label>Image Height</label><input type="number" data-prop="imageHeight" min="0"></div>
-      </div>
-      <div class="wf-prop-group"><label>Status</label>
-        <select data-prop="status"><option value="pending">Pending</option><option value="in-progress">In Progress</option><option value="completed">Completed</option></select></div>
-      <div class="wf-prop-group"><label>Priority (1-10)</label><input type="number" data-prop="priority" min="1" max="10"></div>`;
+      </div>`;
     return panel;
   }
 
@@ -916,6 +1012,25 @@ class Canvas extends EventEmitter {
     this._canvasContainer.addEventListener('dragover', e => e.preventDefault());
     this._canvasContainer.addEventListener('drop', e => {
       e.preventDefault();
+      // Custom registered shape?
+      const customLabel = e.dataTransfer.getData('customShape');
+      if (customLabel && this._registeredShapes?.[customLabel]) {
+        const local = this._paper.clientToLocalPoint({ x: e.clientX, y: e.clientY });
+        const ShapeClass = this._registeredShapes[customLabel];
+        const shape = new ShapeClass();
+        const iW = 140, iH = 50;
+        const pos = this._findClearPosition(local.x - iW/2, local.y - iH/2, iW, iH);
+        const cell = shape._buildCell(pos, joint.shapes);
+        cell.attr('label/text', shape._label);
+        shape._cell   = cell;
+        shape._canvas = this;
+        Object.entries(shape._customProps).forEach(([key, val]) => cell.set(`custom_${key}`, val));
+        cell.addTo(this._graph);
+        this._shapes.set(cell.id, shape);
+        setTimeout(() => { this._autoSize(cell); if (shape._renderFn) shape._renderFn(shape); this._selectCell(shape); }, 50);
+        this.emit('shape:add', shape);
+        return;
+      }
       const type  = e.dataTransfer.getData('type');
       const entry = [
         { type:'rect',     label:'Rectangle', cls: Rectangle },
@@ -1280,14 +1395,12 @@ class Canvas extends EventEmitter {
   _populateElementPanel(shape) {
     const p = this._propPanelEl;
     const set = (prop, val) => { const el = p.querySelector(`[data-prop="${prop}"]`); if (el) el.value = val ?? ''; };
-    set('label',            shape.label);
-    set('labelFontSize',    shape.labelFontSize);
-    set('description',      shape.description);
-    set('status',           shape.status);
-    set('priority',         shape.priority);
-    set('imageUrl',         shape.imageUrl);
-    set('imageWidth',       shape.imageWidth);
-    set('imageHeight',      shape.imageHeight);
+    set('label',             shape.label);
+    set('labelFontSize',     shape.labelFontSize);
+    set('description',       shape.description);
+    set('imageUrl',          shape.imageUrl);
+    set('imageWidth',        shape.imageWidth);
+    set('imageHeight',       shape.imageHeight);
     set('backgroundColor',    shape.backgroundColor);
     set('backgroundColorHex', shape.backgroundColor);
     set('borderColor',        shape.borderColor);
@@ -1296,6 +1409,67 @@ class Canvas extends EventEmitter {
     set('labelColorHex',      shape.labelColor);
     set('descriptionColor',   shape.descriptionColor);
     set('descriptionColorHex',shape.descriptionColor);
+
+    // Remove old custom section if any
+    p.querySelector('.wf-custom-props')?.remove();
+
+    const schema = shape.getSchema?.() ?? {};
+    if (Object.keys(schema).length === 0) return;
+
+    const section = this._createEl('div', 'wf-custom-props');
+    const divider = section.appendChild(this._createEl('div'));
+    divider.style.cssText = 'border-top:1px solid #dee2e6;margin:4px 0;';
+
+    Object.entries(schema).forEach(([key, def]) => {
+      if (def.visible === false) return;
+      const group = section.appendChild(this._createEl('div', 'wf-prop-group'));
+      const lbl   = group.appendChild(this._createEl('label'));
+      lbl.textContent = def.label ?? key;
+      const val = shape.getCustomProperty(key);
+
+      let input;
+      if (def.type === 'choice') {
+        input = this._createEl('select');
+        Object.entries(def.choices ?? {}).forEach(([k, v]) => {
+          const opt = input.appendChild(this._createEl('option'));
+          opt.value = k; opt.textContent = v;
+        });
+        input.value = val ?? def.default;
+      } else if (def.type === 'textarea') {
+        input = this._createEl('textarea');
+        input.value = val ?? '';
+      } else if (def.type === 'boolean') {
+        input = this._createEl('input');
+        input.type = 'checkbox';
+        input.checked = val ?? def.default ?? false;
+        input.style.cssText = 'width:auto !important;margin:0;cursor:pointer;align-self:flex-start;';
+        group.appendChild(input);
+      } else if (def.type === 'color') {
+        const wrapper = group.appendChild(this._createEl('div', 'wf-color-row'));
+        const picker  = this._createEl('input'); picker.type = 'color'; picker.value = val ?? def.default ?? '#000000';
+        const hex     = this._createEl('input'); hex.type = 'text';   hex.value = val ?? def.default ?? '#000000';
+        picker.addEventListener('input', () => { hex.value = picker.value; shape.setCustomProperty(key, picker.value); });
+        hex.addEventListener('input',    () => { picker.value = hex.value; shape.setCustomProperty(key, hex.value); });
+        wrapper.appendChild(picker); wrapper.appendChild(hex);
+        group.appendChild(wrapper);
+        return; // already wired, skip generic listener below
+      } else {
+        input = this._createEl('input');
+        input.type  = def.type === 'number' ? 'number' : 'text';
+        input.value = val ?? '';
+        if (def.min !== undefined) input.min = def.min;
+        if (def.max !== undefined) input.max = def.max;
+      }
+
+      if (def.readonly) input.disabled = true;
+      group.appendChild(input);
+      input.addEventListener(def.type === 'boolean' ? 'change' : 'input', () => {
+        const v = def.type === 'boolean' ? input.checked : (def.type === 'number' ? parseFloat(input.value) : input.value);
+        shape.setCustomProperty(key, v);
+      });
+    });
+
+    p.appendChild(section);
   }
 
   _populateLinkPanel(conn) {
@@ -1553,8 +1727,29 @@ class Canvas extends EventEmitter {
 // Bootstrap
 // ═══════════════════════════════════════════════════════════════
 const canvas = new Canvas(document.body);
-const start   = canvas.addShape(new Ellipse('START'));
-const process = canvas.addShape(new Rectangle('PROCESS'));
+
+// Example custom shape
+const TaskShape = Shape.define(Rectangle,
+  { label: 'New Task', backgroundColor: '#f0f8ff' },
+  {
+    assignee: { label: 'Assignee', type: 'text',     default: '' },
+    effort:   { label: 'Effort',   type: 'number',   default: 1, min: 1, max: 10 },
+    done:     { label: 'Done',     type: 'boolean',  default: false },
+    mode:     { label: 'Mode',     type: 'choice',   default: 'auto', choices: { auto: 'Automatic', manual: 'Manual' } },
+    note:     { label: 'Note',     type: 'textarea', default: '' },
+    accent:   { label: 'Accent',   type: 'color',    default: '#3498db' },
+  },
+  (shape) => {
+    shape.backgroundColor = shape.getCustomProperty('done') ? '#d4edda' : '#f0f8ff';
+    shape.borderColor     = shape.getCustomProperty('done') ? '#28a745' : '#adb5bd';
+  }
+);
+
+canvas.registerShape('Task', TaskShape);
+
+const start   = canvas.addShape(new Ellipse({ label: 'START' }));
+const process = canvas.addShape(new Rectangle({ label: 'PROCESS' }));
+const task    = canvas.addShape(new TaskShape({ label: 'My Task', assignee: 'Alice', effort: 3 }));
 </script>
 </body>
 </html>
