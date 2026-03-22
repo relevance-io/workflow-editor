@@ -784,6 +784,7 @@ class Canvas extends EventEmitter {
         if (!portId) return null;
         const ports = cell.getPorts();
         const idx   = ports.findIndex(p => p.id === portId);
+        console.log(`portIndex: portId=${portId} ports=`, ports.map((p,i)=>`${i+1}:${p.id}`), `-> idx=${idx}`);
         return idx >= 0 ? idx + 1 : null;
       };
       return {
@@ -861,10 +862,15 @@ class Canvas extends EventEmitter {
         attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: MARKERS.classic } }
       });
 
+      // Use port index if specified, otherwise use first port
       const srcPorts = source._cell.getPorts();
       const tgtPorts = target._cell.getPorts();
+      console.log(`Connection: ${c.sourceId} port ${c.sourcePort} -> ${c.targetId} port ${c.targetPort}`);
+      console.log(`  src ports:`, srcPorts.map((p,i) => `${i+1}:${p.id}`));
+      console.log(`  tgt ports:`, tgtPorts.map((p,i) => `${i+1}:${p.id}`));
       const srcPort  = c.sourcePort != null ? srcPorts[c.sourcePort - 1]?.id : srcPorts[0]?.id;
       const tgtPort  = c.targetPort != null ? tgtPorts[c.targetPort - 1]?.id : tgtPorts[0]?.id;
+      console.log(`  resolved: srcPort=${srcPort} tgtPort=${tgtPort}`);
       link.source({ id: source._cell.id, port: srcPort });
       link.target({ id: target._cell.id, port: tgtPort });
       link.addTo(this._graph);
