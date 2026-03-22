@@ -507,7 +507,7 @@
         icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
 
         // On mobile: closing the other sidebar when expanding
-        if (window.innerWidth < 768 && !isCollapsed) {
+        if (isMobile() && !isCollapsed) {
             const otherId = id === 'left-sidebar' ? 'right-sidebar' : 'left-sidebar';
             const other = document.getElementById(otherId);
             const otherIcon = document.getElementById(otherId === 'left-sidebar' ? 'left-icon' : 'right-icon');
@@ -525,7 +525,7 @@
     }
 
     function collapseBothSidebars() {
-        if (window.innerWidth >= 768) return;
+        if (!isMobile()) return;
         ['left-sidebar', 'right-sidebar'].forEach(id => {
             const sidebar = document.getElementById(id);
             const icon = document.getElementById(id === 'left-sidebar' ? 'left-icon' : 'right-icon');
@@ -873,12 +873,72 @@
     paper.on('blank:pointerdown', (evt) => {
         collapseBothSidebars();
         deselectAll();
+        if (!isMobile()) return; // handled by touch events on mobile
         const startX = evt.clientX, startY = evt.clientY, origin = paper.translate();
         const onMouseMove = (e) => paper.translate(origin.tx + (e.clientX - startX), origin.ty + (e.clientY - startY));
         const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
+
+    // Mobile touch: pinch-to-zoom + single-finger pan on blank canvas
+    let touchState = null;
+
+    function getTouchMidpoint(t1, t2) {
+        return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    }
+    function getTouchDist(t1, t2) {
+        const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    paper.el.addEventListener('touchstart', (e) => {
+        if (!isMobile()) return;
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            // Only pan if touch starts on blank (not on a cell)
+            const el = document.elementFromPoint(t.clientX, t.clientY);
+            const onCell = el && el.closest('.joint-cell');
+            if (onCell) return;
+            touchState = { type: 'pan', x: t.clientX, y: t.clientY, origin: paper.translate() };
+        } else if (e.touches.length === 2) {
+            const [t1, t2] = [e.touches[0], e.touches[1]];
+            touchState = {
+                type: 'pinch',
+                dist: getTouchDist(t1, t2),
+                mid: getTouchMidpoint(t1, t2),
+                scale: paper.scale().sx,
+                origin: paper.translate()
+            };
+        }
+    }, { passive: true });
+
+    paper.el.addEventListener('touchmove', (e) => {
+        if (!isMobile() || !touchState) return;
+        e.preventDefault();
+        if (touchState.type === 'pan' && e.touches.length === 1) {
+            const t = e.touches[0];
+            const dx = t.clientX - touchState.x, dy = t.clientY - touchState.y;
+            paper.translate(touchState.origin.tx + dx, touchState.origin.ty + dy);
+        } else if (touchState.type === 'pinch' && e.touches.length === 2) {
+            const [t1, t2] = [e.touches[0], e.touches[1]];
+            const newDist = getTouchDist(t1, t2);
+            const factor = newDist / touchState.dist;
+            const newScale = Math.max(0.1, Math.min(10, touchState.scale * factor));
+            const mid = getTouchMidpoint(t1, t2);
+            const rect = paper.el.getBoundingClientRect();
+            const x = mid.x - rect.left, y = mid.y - rect.top;
+            const originX = (x - touchState.origin.tx) / touchState.scale;
+            const originY = (y - touchState.origin.ty) / touchState.scale;
+            paper.scale(newScale, newScale);
+            paper.translate(x - originX * newScale, y - originY * newScale);
+        }
+    }, { passive: false });
+
+    paper.el.addEventListener('touchend', () => {
+        if (!isMobile()) return;
+        touchState = null;
+    }, { passive: true });
 
     function findNearestClearPosition(x, y, w, h, exclude = null) {
         const clearance = 4 * GRID_SIZE;
@@ -958,7 +1018,7 @@
     document.querySelectorAll('.node-template').forEach(el => {
         el.addEventListener('dragstart', e => e.dataTransfer.setData('type', e.target.dataset.type));
         el.addEventListener('click', e => {
-            if (window.innerWidth >= 768) return;
+            if (!isMobile()) return;
             const type = e.currentTarget.dataset.type;
             const rect = paper.el.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
@@ -970,10 +1030,14 @@
         });
     });
 
+    function isMobile() {
+        return window.matchMedia('(pointer: coarse) and (max-width: 767px)').matches;
+    }
+
     function layout() {}
 
     // Collapse both sidebars on mobile phones
-    if (window.innerWidth < 768) {
+    if (isMobile()) {
         document.getElementById('left-sidebar').classList.add('collapsed');
         document.getElementById('right-sidebar').classList.add('collapsed');
         document.getElementById('left-icon').style.transform = 'rotate(180deg)';
