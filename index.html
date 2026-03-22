@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JointJS Elbow Workflow</title>
+    <title>JointJS Workflow</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jointjs/3.7.7/joint.min.css">
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; touch-action: none; }
@@ -25,20 +25,46 @@
             display: flex;
             flex-direction: column;
             z-index: 20;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-left.collapsed, .sidebar-right.collapsed {
+            width: 44px;
         }
 
         .sidebar-left { border-right: 1px solid #dee2e6; }
         .sidebar-right { border-left: 1px solid #dee2e6; }
 
         .sidebar-header {
-            padding: 10px 15px;
+            padding: 0 15px;
             background: #fff;
             border-bottom: 1px solid #dee2e6;
             font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            min-height: 45px;
+            height: 48px;
+            white-space: nowrap;
+        }
+
+        /* Center toggle button when collapsed */
+        .sidebar-left.collapsed .sidebar-header,
+        .sidebar-right.collapsed .sidebar-header {
+            justify-content: center;
+            padding: 0;
+            border-bottom: none;
+        }
+
+        /* Strict hiding of all content except the toggle icon */
+        .sidebar-left.collapsed .sidebar-header span,
+        .sidebar-right.collapsed .sidebar-header span,
+        .sidebar-left.collapsed .component-list,
+        .sidebar-right.collapsed .properties-panel,
+        .sidebar-right.collapsed .header-actions,
+        .sidebar-right.collapsed #no-selection {
+            display: none !important;
         }
 
         .header-actions { display: flex; gap: 4px; }
@@ -56,6 +82,21 @@
 
         .header-btn:hover { background: #f1f3f5; color: #3498db; }
         .header-btn.danger:hover { color: #e74c3c; border-color: #fadbd8; background: #fdf2f2; }
+
+        .collapse-btn {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s, background 0.2s;
+            border-radius: 4px;
+        }
+
+        .collapse-btn:hover { background: #f1f3f5; color: #3498db; }
 
         .component-list {
             padding: 15px;
@@ -89,17 +130,23 @@
             display: flex; gap: 10px;
         }
 
-        .zoom-controls {
+        .bottom-left-controls {
             position: absolute;
             bottom: 20px;
             left: 20px;
             z-index: 1000;
             display: flex;
             flex-direction: column;
+            gap: 10px;
+        }
+
+        .zoom-controls {
+            display: flex;
+            flex-direction: column;
             gap: 5px;
         }
 
-        .controls button, .zoom-controls button {
+        .controls button, .zoom-controls button, .toggle-btn {
             padding: 8px 16px;
             cursor: pointer;
             background: #fff;
@@ -108,12 +155,26 @@
             border-radius: 4px;
             font-weight: 500;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
         }
 
-        .zoom-controls button {
+        .zoom-controls button, .toggle-btn {
             width: 40px; height: 40px; padding: 0;
-            font-size: 16px; display: flex;
-            align-items: center; justify-content: center;
+            font-size: 16px; 
+        }
+
+        .toggle-btn {
+            color: #6c757d;
+        }
+
+        .toggle-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
         }
 
         #paper { width: 100%; height: 100%; }
@@ -121,7 +182,6 @@
         .joint-port { display: none; }
         .joint-highlight-selection ~ .joint-port,
         .joint-cell.selected .joint-port { display: block; }
-        /* Forces ports visible when dragging a link or its tools */
         .joint-paper.dragging-link .joint-port { display: block !important; }
 
         #context-menu {
@@ -140,11 +200,11 @@
 
         .properties-panel { 
             padding: 15px; display: flex;
-            flex-direction: column; gap: 24px; overflow-y: auto;
+            flex-direction: column; gap: 18px; overflow-y: auto;
         }
 
-        .prop-group { display: flex; flex-direction: column; gap: 8px; }
-        .prop-group label { font-size: 12px; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .prop-group { display: flex; flex-direction: column; gap: 6px; }
+        .prop-group label { font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .properties-panel input, .properties-panel textarea, .properties-panel select {
             width: 100%; padding: 8px; border: 1px solid #ced4da;
@@ -161,13 +221,20 @@
             background: #fff; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer;
         }
         .upload-btn:hover { background: #f1f3f5; border-color: #3498db; color: #3498db; }
+        .prop-row { display: flex; gap: 10px; }
+        .prop-row > .prop-group { flex: 1; }
     </style>
 </head>
 <body>
 
 <div class="wrapper">
-    <div class="sidebar-left">
-        <div class="sidebar-header">Library</div>
+    <div class="sidebar-left" id="left-sidebar">
+        <div class="sidebar-header">
+            <span>Library</span>
+            <button class="collapse-btn" onclick="toggleSidebar('left-sidebar')" title="Toggle Sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="left-icon"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+        </div>
         <div class="component-list">
             <div class="node-template" draggable="true" data-type="rect">Rectangle</div>
             <div class="node-template" draggable="true" data-type="square">Square</div>
@@ -185,17 +252,25 @@
         <div class="controls">
             <button onclick="layout()">Canvas Button</button>
         </div>
-        <div class="zoom-controls">
-            <button id="zoom-fit" title="Fit to Screen">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        
+        <div class="bottom-left-controls">
+            <button id="toggle-auto-port" class="toggle-btn active" title="Toggle Auto Port Switching (ON)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m3 10H5M16 12H8M7 7l-4 4 4 4M17 9l4 4-4 4"/></svg>
             </button>
-            <button id="zoom-reset" title="Reset Zoom (100%)">1:1</button>
-            <button id="zoom-in">+</button>
-            <button id="zoom-out">-</button>
-            <button id="zoom-center" title="Center View">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
+
+            <div class="zoom-controls">
+                <button id="zoom-fit" title="Fit Content to View">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                </button>
+                <button id="zoom-reset" title="Reset Zoom to 100%">1:1</button>
+                <button id="zoom-in" title="Zoom In">+</button>
+                <button id="zoom-out" title="Zoom Out">-</button>
+                <button id="zoom-center" title="Center View on Content">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
         </div>
+
         <div id="paper"></div>
         <div id="context-menu">
             <div class="menu-item" id="clone-item">
@@ -209,8 +284,11 @@
         </div>
     </div>
 
-    <div class="sidebar-right">
+    <div class="sidebar-right" id="right-sidebar">
         <div class="sidebar-header">
+            <button class="collapse-btn" onclick="toggleSidebar('right-sidebar')" title="Toggle Sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="right-icon"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
             <span>Properties</span>
             <div class="header-actions" id="sidebar-actions" style="display: none;">
                 <button id="focus-element" class="header-btn" title="Center on Element">
@@ -224,10 +302,16 @@
                 </button>
             </div>
         </div>
-        <div class="properties-panel" id="prop-panel" style="display: none;">
+        
+        <!-- Element Properties -->
+        <div class="properties-panel" id="prop-panel-element" style="display: none;">
             <div class="prop-group">
                 <label>Label</label>
                 <input type="text" id="prop-label" oninput="updateProperty('label/text', this.value, true)">
+            </div>
+            <div class="prop-group">
+                <label>Font Size (%)</label>
+                <input type="number" id="prop-font-size" value="100" min="10" max="500" oninput="updateProperty('fontSizePercent', this.value)">
             </div>
             <div class="prop-group">
                 <label>Background Color</label>
@@ -237,15 +321,49 @@
                 </div>
             </div>
             <div class="prop-group">
-                <label>Foreground Color</label>
+                <label>Border Color</label>
                 <div class="color-input-wrapper">
-                    <input type="color" id="prop-fg-picker" oninput="syncColorInput('prop-fg-picker', 'prop-fg-hex', 'label/fill')">
-                    <input type="text" id="prop-fg-hex" placeholder="#000000" oninput="syncColorInput('prop-fg-hex', 'prop-fg-picker', 'label/fill')">
+                    <input type="color" id="prop-border-picker" oninput="syncColorInput('prop-border-picker', 'prop-border-hex', 'body/stroke')">
+                    <input type="text" id="prop-border-hex" placeholder="#ADB5BD" oninput="syncColorInput('prop-border-hex', 'prop-border-picker', 'body/stroke')">
+                </div>
+            </div>
+            <div class="prop-group">
+                <label>Label Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="prop-label-picker" oninput="syncColorInput('prop-label-picker', 'prop-label-hex', 'label/fill')">
+                    <input type="text" id="prop-label-hex" placeholder="#000000" oninput="syncColorInput('prop-label-hex', 'prop-label-picker', 'label/fill')">
+                </div>
+            </div>
+            <div class="prop-group">
+                <label>Description Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="prop-desc-picker" oninput="syncColorInput('prop-desc-picker', 'prop-desc-hex', 'descriptionLabel/fill')">
+                    <input type="text" id="prop-desc-hex" placeholder="#6C757D" oninput="syncColorInput('prop-desc-hex', 'prop-desc-picker', 'descriptionLabel/fill')">
                 </div>
             </div>
             <div class="prop-group">
                 <label>Description</label>
                 <textarea id="prop-desc" oninput="updateProperty('description', this.value)"></textarea>
+            </div>
+            <div class="prop-group">
+                <label>Image URL</label>
+                <div class="image-input-wrapper">
+                    <input type="text" id="prop-image" placeholder="https://..." oninput="updateProperty('imageUrl', this.value)">
+                    <button class="upload-btn" onclick="document.getElementById('image-upload-input').click()" title="Upload Image">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </button>
+                    <input type="file" id="image-upload-input" style="display: none;" accept="image/*" onchange="handleImageUpload(this)">
+                </div>
+            </div>
+            <div class="prop-row">
+                <div class="prop-group">
+                    <label>Image Width</label>
+                    <input type="number" id="prop-img-w" min="0" oninput="updateProperty('imageWidth', this.value)">
+                </div>
+                <div class="prop-group">
+                    <label>Image Height</label>
+                    <input type="number" id="prop-img-h" min="0" oninput="updateProperty('imageHeight', this.value)">
+                </div>
             </div>
             <div class="prop-group">
                 <label>Status</label>
@@ -259,17 +377,70 @@
                 <label>Priority (1-10)</label>
                 <input type="number" id="prop-priority" min="1" max="10" oninput="updateProperty('priority', this.value)">
             </div>
+        </div>
+
+        <!-- Link Properties -->
+        <div class="properties-panel" id="prop-panel-link" style="display: none;">
             <div class="prop-group">
-                <label>Image URL</label>
-                <div class="image-input-wrapper">
-                    <input type="text" id="prop-image" placeholder="https://..." oninput="updateProperty('imageUrl', this.value)">
-                    <button class="upload-btn" onclick="document.getElementById('image-upload-input').click()" title="Upload Image">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    </button>
-                    <input type="file" id="image-upload-input" style="display: none;" accept="image/*" onchange="handleImageUpload(this)">
+                <label>Label</label>
+                <input type="text" id="link-prop-label" oninput="updateLinkProperty('label', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Label Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="link-prop-fg-picker" oninput="syncLinkPropertyColor('link-prop-fg-picker', 'link-prop-fg-hex', 'labelColor')">
+                    <input type="text" id="link-prop-fg-hex" placeholder="#333333" oninput="syncLinkPropertyColor('link-prop-fg-hex', 'link-prop-fg-picker', 'labelColor')">
                 </div>
             </div>
+            <div class="prop-group">
+                <label>Font Size (%)</label>
+                <input type="number" id="link-prop-font-size" value="100" min="10" max="500" oninput="updateLinkProperty('fontSizePercent', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Connector Type</label>
+                <select id="link-prop-connector" onchange="updateLinkProperty('connector', this.value)">
+                    <option value="elbow">Elbow (Default)</option>
+                    <option value="straight">Straight</option>
+                    <option value="curved">Curved</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Line Color</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="link-prop-color-picker" oninput="syncLinkPropertyColor('link-prop-color-picker', 'link-prop-color-hex', 'color')">
+                    <input type="text" id="link-prop-color-hex" placeholder="#495057" oninput="syncLinkPropertyColor('link-prop-color-hex', 'link-prop-color-picker', 'color')">
+                </div>
+            </div>
+            <div class="prop-group">
+                <label>Line Style</label>
+                <select id="link-prop-style" onchange="updateLinkProperty('style', this.value)">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Source Arrow</label>
+                <select id="link-prop-source-arrow" onchange="updateLinkProperty('sourceArrow', this.value)">
+                    <option value="none">None</option>
+                    <option value="classic">Classic</option>
+                    <option value="block">Block</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Target Arrow</label>
+                <select id="link-prop-target-arrow" onchange="updateLinkProperty('targetArrow', this.value)">
+                    <option value="none">None</option>
+                    <option value="classic">Classic</option>
+                    <option value="block">Block</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Description</label>
+                <textarea id="link-prop-desc" oninput="updateLinkProperty('description', this.value)"></textarea>
+            </div>
         </div>
+
         <div id="no-selection" style="padding: 20px; color: #adb5bd; font-size: 13px; text-align: center;">
             Select an item to view properties
         </div>
@@ -285,8 +456,14 @@
     const namespace = joint.shapes;
     const graph = new joint.dia.Graph({}, { cellNamespace: namespace });
     const GRID_SIZE = 10;
-    const CLEARANCE_UNITS = 4;
-    
+    let isAutoPortEnabled = true;
+
+    const MARKERS = {
+        none: null,
+        classic: { 'type': 'path', 'd': 'M 10 -5 0 0 10 5 Z' },
+        block: { 'type': 'path', 'd': 'M 10 -10 0 0 10 10 Z' }
+    };
+
     const paper = new joint.dia.Paper({
         el: document.getElementById('paper'),
         model: graph,
@@ -299,25 +476,42 @@
         defaultConnector: { name: 'rounded' },
         defaultRouter: { 
             name: 'manhattan', 
-            args: { 
-                step: GRID_SIZE, 
-                padding: 20,
-                maxIter: 200 
-            } 
+            args: { step: GRID_SIZE, padding: 20, maxIter: 200 } 
         },
         interactive: { linkMove: true, vertexAdd: true, vertexMove: true },
         linkPinning: false,
         snapLinks: { radius: 25 },
         markAvailable: true,
         defaultLink: () => new joint.shapes.standard.Link({
-            attrs: { 
-                line: { 
-                    stroke: '#495057', strokeWidth: 2, 
-                    targetMarker: { 'type': 'path', 'd': 'M 10 -5 0 0 10 5 Z' } 
-                } 
-            }
+            attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: MARKERS.classic } }
         }),
         validateConnection: (vs, ms, vt, mt) => ms && mt && vs !== vt
+    });
+
+    function toggleSidebar(id) {
+        const sidebar = document.getElementById(id);
+        const icon = document.getElementById(id === 'left-sidebar' ? 'left-icon' : 'right-icon');
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        
+        if (id === 'left-sidebar') {
+            icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+        } else {
+            icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+        
+        const resizeInterval = setInterval(() => {
+            const container = document.getElementById('canvas-container');
+            paper.setDimensions(container.clientWidth, container.clientHeight);
+        }, 16);
+        
+        setTimeout(() => clearInterval(resizeInterval), 350);
+    }
+
+    document.getElementById('toggle-auto-port').addEventListener('click', function() {
+        isAutoPortEnabled = !isAutoPortEnabled;
+        this.classList.toggle('active', isAutoPortEnabled);
+        this.title = `Toggle Auto Port Switching (${isAutoPortEnabled ? 'ON' : 'OFF'})`;
+        if (isAutoPortEnabled) graph.getElements().forEach(el => autoPortDistributor(el));
     });
 
     function zoomAtPoint(factor, clientX, clientY) {
@@ -338,9 +532,7 @@
     paper.el.addEventListener('wheel', (evt) => {
         evt.preventDefault();
         if (evt.ctrlKey) {
-            const sensitivity = 0.0015;
-            const factor = Math.exp(-evt.deltaY * sensitivity);
-            zoomAtPoint(factor, evt.clientX, evt.clientY);
+            zoomAtPoint(Math.exp(-evt.deltaY * 0.0015), evt.clientX, evt.clientY);
         } else {
             const currentTranslate = paper.translate();
             paper.translate(currentTranslate.tx - evt.deltaX, currentTranslate.ty - evt.deltaY);
@@ -359,40 +551,30 @@
 
     document.getElementById('zoom-reset').addEventListener('click', () => {
         const rect = paper.el.getBoundingClientRect();
-        const currentScale = paper.scale().sx;
-        zoomAtPoint(1 / currentScale, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        zoomAtPoint(1 / paper.scale().sx, rect.left + rect.width / 2, rect.top + rect.height / 2);
     });
 
-    document.getElementById('zoom-fit').addEventListener('click', () => {
-        paper.scaleContentToFit({ padding: 50, minScale: 0.2, maxScale: 2 });
-    });
-
+    document.getElementById('zoom-fit').addEventListener('click', () => paper.scaleContentToFit({ padding: 50, minScale: 0.2, maxScale: 2 }));
     document.getElementById('zoom-center').addEventListener('click', () => {
         const bbox = graph.getBBox();
         if (!bbox) return;
         const paperSize = paper.getComputedSize();
         paper.scale(1, 1);
-        const tx = (paperSize.width / 2) - (bbox.x + bbox.width / 2);
-        const ty = (paperSize.height / 2) - (bbox.y + bbox.height / 2);
-        paper.translate(tx, ty);
+        paper.translate((paperSize.width / 2) - (bbox.x + bbox.width / 2), (paperSize.height / 2) - (bbox.y + bbox.height / 2));
     });
 
     function focusSelected() {
-        if (selectedCellView && selectedCellView.model.isElement()) {
-            const center = selectedCellView.model.getBBox().center();
-            const paperSize = paper.getComputedSize();
-            paper.scale(1, 1);
-            const tx = (paperSize.width / 2) - center.x;
-            const ty = (paperSize.height / 2) - center.y;
-            paper.translate(tx, ty);
-        }
+        if (!selectedCellView) return;
+        const center = selectedCellView.model.getBBox().center();
+        const paperSize = paper.getComputedSize();
+        paper.scale(1, 1);
+        paper.translate((paperSize.width / 2) - center.x, (paperSize.height / 2) - center.y);
     }
 
     function duplicateSelected() {
         if (selectedCellView && selectedCellView.model.isElement()) {
             const clone = selectedCellView.model.clone();
-            clone.translate(40, 40);
-            clone.addTo(graph);
+            clone.translate(40, 40).addTo(graph);
             const view = paper.findViewByModel(clone);
             if (view) paper.trigger('element:pointerdown', view, {});
         }
@@ -420,7 +602,8 @@
         if (selectedCellView) selectedCellView.el.classList.remove('selected');
         paper.removeTools();
         joint.highlighters.stroke.removeAll(paper);
-        document.getElementById('prop-panel').style.display = 'none';
+        document.getElementById('prop-panel-element').style.display = 'none';
+        document.getElementById('prop-panel-link').style.display = 'none';
         document.getElementById('sidebar-actions').style.display = 'none';
         document.getElementById('no-selection').style.display = 'block';
         selectedCellView = null;
@@ -433,13 +616,19 @@
         menu.style.display = 'block';
         menu.style.left = (evt.clientX - rect.left) + 'px';
         menu.style.top = (evt.clientY - rect.top) + 'px';
+        document.getElementById('clone-item').style.display = cellView.model.isElement() ? 'flex' : 'none';
     });
 
     function syncColorInput(sourceId, targetId, attrPath) {
-        const source = document.getElementById(sourceId);
-        const target = document.getElementById(targetId);
-        target.value = source.value;
-        updateProperty(attrPath, source.value, true);
+        const val = document.getElementById(sourceId).value;
+        document.getElementById(targetId).value = val;
+        updateProperty(attrPath, val, true);
+    }
+
+    function syncLinkPropertyColor(sourceId, targetId, key) {
+        const val = document.getElementById(sourceId).value;
+        document.getElementById(targetId).value = val;
+        updateLinkProperty(key, val);
     }
 
     function handleImageUpload(input) {
@@ -459,55 +648,87 @@
         cellView.model.toFront();
         selectedCellView = cellView;
         cellView.el.classList.add('selected');
-        joint.highlighters.stroke.add(cellView, 'root', 'selection', {
-            padding: 5, attrs: { 'stroke': '#3498db', 'stroke-width': 3 }
-        });
-        document.getElementById('prop-panel').style.display = 'block';
+        joint.highlighters.stroke.add(cellView, 'root', 'selection', { padding: 5, attrs: { 'stroke': '#3498db', 'stroke-width': 3 } });
+        
+        if (document.getElementById('right-sidebar').classList.contains('collapsed')) {
+            toggleSidebar('right-sidebar');
+        }
+
+        document.getElementById('prop-panel-element').style.display = 'block';
         document.getElementById('no-selection').style.display = 'none';
         document.getElementById('sidebar-actions').style.display = 'flex';
+        document.getElementById('duplicate-element').style.display = 'flex';
         
         document.getElementById('prop-label').value = cellView.model.attr('label/text') || '';
+        document.getElementById('prop-font-size').value = cellView.model.get('fontSizePercent') || 100;
         document.getElementById('prop-desc').value = cellView.model.get('description') || '';
         document.getElementById('prop-status').value = cellView.model.get('status') || 'pending';
         document.getElementById('prop-priority').value = cellView.model.get('priority') || 1;
         document.getElementById('prop-image').value = cellView.model.get('imageUrl') || '';
+        document.getElementById('prop-img-w').value = cellView.model.get('imageWidth') || 32;
+        document.getElementById('prop-img-h').value = cellView.model.get('imageHeight') || 32;
         
         const fill = cellView.model.attr('body/fill') || '#ffffff';
-        const textFill = cellView.model.attr('label/fill') || '#212529';
+        const stroke = cellView.model.attr('body/stroke') || '#adb5bd';
+        const labelFill = cellView.model.attr('label/fill') || '#212529';
+        const descFill = cellView.model.attr('descriptionLabel/fill') || '#6c757d';
         
         document.getElementById('prop-bg-hex').value = fill;
         document.getElementById('prop-bg-picker').value = fill;
-        document.getElementById('prop-fg-hex').value = textFill;
-        document.getElementById('prop-fg-picker').value = textFill;
+        document.getElementById('prop-border-hex').value = stroke;
+        document.getElementById('prop-border-picker').value = stroke;
+        document.getElementById('prop-label-hex').value = labelFill;
+        document.getElementById('prop-label-picker').value = labelFill;
+        document.getElementById('prop-desc-hex').value = descFill;
+        document.getElementById('prop-desc-picker').value = descFill;
     });
 
-    // Detect when starting a connection from a port
-    paper.on('cell:pointerdown', (cellView, evt) => {
-        const magnet = evt.target.closest('.joint-port');
-        if (magnet) paper.el.classList.add('dragging-link');
+    paper.on('link:pointerdown', (linkView) => {
+        deselectAll();
+        linkView.model.toFront();
+        selectedCellView = linkView;
+        linkView.addTools(new joint.dia.ToolsView({
+            tools: [new joint.linkTools.Vertices(), new CustomSourceArrowhead(), new joint.linkTools.TargetArrowhead({ offset: -1 }), new joint.linkTools.Remove({ distance: 20 })]
+        }));
+        
+        if (document.getElementById('right-sidebar').classList.contains('collapsed')) {
+            toggleSidebar('right-sidebar');
+        }
+
+        document.getElementById('prop-panel-link').style.display = 'block';
+        document.getElementById('no-selection').style.display = 'none';
+        document.getElementById('sidebar-actions').style.display = 'flex';
+        document.getElementById('duplicate-element').style.display = 'none';
+
+        const getMarkerType = (m) => (m && m.d === MARKERS.classic.d) ? 'classic' : (m && m.d === MARKERS.block.d) ? 'block' : 'none';
+        const dash = linkView.model.attr('line/strokeDasharray') || '';
+        const lineColor = linkView.model.attr('line/stroke') || '#495057';
+        const labelColor = linkView.model.label(0)?.attrs?.text?.fill || '#333333';
+
+        document.getElementById('link-prop-label').value = linkView.model.label(0)?.attrs?.text?.text || '';
+        document.getElementById('link-prop-font-size').value = linkView.model.get('fontSizePercent') || 100;
+        
+        document.getElementById('link-prop-color-picker').value = lineColor;
+        document.getElementById('link-prop-color-hex').value = lineColor;
+        document.getElementById('link-prop-fg-picker').value = labelColor;
+        document.getElementById('link-prop-fg-hex').value = labelColor;
+
+        document.getElementById('link-prop-desc').value = linkView.model.get('description') || '';
+        document.getElementById('link-prop-source-arrow').value = getMarkerType(linkView.model.attr('line/sourceMarker'));
+        document.getElementById('link-prop-target-arrow').value = getMarkerType(linkView.model.attr('line/targetMarker'));
+        document.getElementById('link-prop-connector').value = linkView.model.connector()?.name === 'smooth' ? 'curved' : linkView.model.router()?.name === 'normal' ? 'straight' : 'elbow';
+        document.getElementById('link-prop-style').value = dash === '5,5' ? 'dashed' : dash === '1,5' ? 'dotted' : 'solid';
     });
 
-    // Detect when moving existing arrowheads/tools
-    paper.on('tool:pointerdown', (linkView, toolView) => {
-        const isArrow = toolView instanceof joint.linkTools.SourceArrowhead || 
-                        toolView instanceof joint.linkTools.TargetArrowhead ||
-                        toolView instanceof CustomSourceArrowhead;
-        if (isArrow) paper.el.classList.add('dragging-link');
-    });
-
-    paper.on('cell:pointerup link:pointerup tool:pointerup', () => {
-        paper.el.classList.remove('dragging-link');
-    });
-
-    paper.on('cell:pointerup', (cellView) => {
-        if (cellView.model.isElement()) {
-            const bbox = cellView.model.getBBox();
-            const pos = findNearestClearPosition(bbox.x, bbox.y, bbox.width, bbox.height, cellView.model);
-            cellView.model.position(pos.x, pos.y);
+    paper.on('cell:pointerdown tool:pointerdown', (v, evt) => { if (evt.target.closest('.joint-port') || v instanceof joint.linkTools.SourceArrowhead) paper.el.classList.add('dragging-link'); });
+    paper.on('cell:pointerup link:pointerup tool:pointerup', () => paper.el.classList.remove('dragging-link'));
+    paper.on('cell:pointerup', (cv) => {
+        if (cv.model.isElement()) {
+            const bbox = cv.model.getBBox();
+            const pos = findNearestClearPosition(bbox.x, bbox.y, bbox.width, bbox.height, cv.model);
+            cv.model.position(pos.x, pos.y);
         }
     });
-
-    $(document).on('mouseup', () => paper.el.classList.remove('dragging-link'));
 
     function updateProperty(key, val, isAttr = false) {
         if (!selectedCellView || !selectedCellView.model.isElement()) return;
@@ -524,45 +745,78 @@
         autoSize(selectedCellView.model);
     }
 
+    function updateLinkProperty(key, val) {
+        if (!selectedCellView || !selectedCellView.model.isLink()) return;
+        const link = selectedCellView.model;
+        switch(key) {
+            case 'label': 
+                const fontSize = 12 * ((link.get('fontSizePercent') || 100) / 100);
+                const color = link.get('labelColor') || '#333333';
+                link.labels(val ? [{ attrs: { text: { text: val, fill: color, fontSize, textVerticalAnchor: 'middle' }, rect: { fill: 'white', opacity: 0.9 } }, position: { distance: 0.5 } }] : []); 
+                break;
+            case 'labelColor':
+                link.set('labelColor', val);
+                const currentLabel = link.label(0)?.attrs?.text?.text || '';
+                updateLinkProperty('label', currentLabel);
+                break;
+            case 'fontSizePercent':
+                link.set('fontSizePercent', val);
+                const currentText = link.label(0)?.attrs?.text?.text || '';
+                updateLinkProperty('label', currentText);
+                break;
+            case 'connector': 
+                if (val === 'elbow') { link.router('manhattan', { step: GRID_SIZE, padding: 20 }); link.connector('rounded'); }
+                else if (val === 'straight') { link.router('normal'); link.connector('normal'); }
+                else { link.router('normal'); link.connector('smooth'); }
+                break;
+            case 'color': link.attr('line/stroke', val); break;
+            case 'style': link.attr('line/strokeDasharray', val === 'dashed' ? '5,5' : val === 'dotted' ? '1,5' : ''); break;
+            case 'sourceArrow': link.attr('line/sourceMarker', MARKERS[val]); break;
+            case 'targetArrow': link.attr('line/targetMarker', MARKERS[val]); break;
+            case 'description': link.set('description', val); break;
+        }
+    }
+
     function autoSize(element) {
         const view = paper.findViewByModel(element);
         if (!view) return;
-        const labelNode = view.el.querySelector('.label');
-        const descNode = view.el.querySelector('.descriptionLabel');
+        const labelNode = view.el.querySelector('.label'), descNode = view.el.querySelector('.descriptionLabel');
         if (!labelNode || !descNode) return;
-        const imageUrl = element.get('imageUrl');
-        const type = element.get('type');
-        const labelBBox = labelNode.getBBox();
-        const descBBox = descNode.getBBox();
-        const descText = element.attr('descriptionLabel/text') || '';
-        const padding = 15;
-        const spacing = 2;
-        const imgSize = imageUrl ? 32 : 0;
-        const imgSpacing = imageUrl ? 10 : 0;
-        const textW = Math.max(labelBBox.width, descBBox.width);
-        const totalContentW = imgSize + imgSpacing + textW;
-        let width = Math.max(140, padding + totalContentW + padding);
-        const totalTextH = descText ? (labelBBox.height + spacing + descBBox.height) : labelBBox.height;
-        let height = Math.max(50, padding + Math.max(imgSize, totalTextH) + padding);
 
-        if (type === 'diamond') {
-            const side = Math.max(width, height);
-            width = height = side;
-        } else if (['triangle', 'hexagon', 'pentagon', 'octagon'].includes(type)) {
-            const targetRatio = 1.2;
-            if (width / height > targetRatio) height = width / targetRatio;
-            else width = height * targetRatio;
+        const scale = (element.get('fontSizePercent') || 100) / 100;
+        const baseFontSize = 13, baseDescSize = 11;
+        
+        element.attr({
+            label: { fontSize: baseFontSize * scale },
+            descriptionLabel: { fontSize: baseDescSize * scale }
+        });
+
+        const imageUrl = element.get('imageUrl'), type = element.get('type'), descText = element.attr('descriptionLabel/text') || '';
+        const imgW = parseInt(element.get('imageWidth') || 32), imgH = parseInt(element.get('imageHeight') || 32);
+        
+        const labelBBox = labelNode.getBBox(), descBBox = descNode.getBBox();
+        const pad = 15, imgSpace = imageUrl ? 10 : 0;
+        const textW = Math.max(labelBBox.width, descBBox.width);
+        const totalContentW = (imageUrl ? imgW : 0) + imgSpace + textW;
+        
+        let width = Math.max(140, pad + totalContentW + pad);
+        const totalTextH = descText ? (labelBBox.height + descBBox.height) : labelBBox.height;
+        let height = Math.max(50, pad + Math.max(imageUrl ? imgH : 0, totalTextH) + pad);
+
+        if (type === 'diamond') width = height = Math.max(width, height);
+        else if (['triangle', 'hexagon', 'pentagon', 'octagon'].includes(type)) {
+            if (width / height > 1.2) height = width / 1.2; else width = height * 1.2;
             if (type === 'triangle') { width *= 1.25; height *= 1.25; }
         }
 
         const startX = (width - totalContentW) / 2;
-        element.attr('image', { refX: 0, refX2: startX, refY: 0.5, y: -imgSize / 2, width: imgSize, height: imgSize });
-        const textCenterX = startX + imgSize + imgSpacing + (textW / 2);
+        element.attr('image', { refX: 0, refX2: startX, refY: 0.5, y: -imgH / 2, width: imgW, height: imgH });
+        const textCenterX = startX + (imageUrl ? imgW : 0) + imgSpace + (textW / 2);
         
         if (descText) {
             const contentY = (height - totalTextH) / 2;
             element.attr('label', { refX: 0, refX2: textCenterX, refY: 0, refY2: contentY + (labelBBox.height / 2), textAnchor: 'middle', textVerticalAnchor: 'middle' });
-            element.attr('descriptionLabel', { refX: 0, refX2: textCenterX, refY: 0, refY2: contentY + labelBBox.height + (descBBox.height / 2) + spacing, textAnchor: 'middle', textVerticalAnchor: 'middle' });
+            element.attr('descriptionLabel', { refX: 0, refX2: textCenterX, refY: 0, refY2: contentY + labelBBox.height + (descBBox.height / 2), textAnchor: 'middle', textVerticalAnchor: 'middle' });
         } else {
             element.attr('label', { refX: 0, refX2: textCenterX, refY: 0.5, refY2: 0, textAnchor: 'middle', textVerticalAnchor: 'middle' });
         }
@@ -575,166 +829,93 @@
 
     paper.on('blank:pointerdown', (evt) => {
         deselectAll();
-        const startX = evt.clientX;
-        const startY = evt.clientY;
-        const origin = paper.translate();
+        const startX = evt.clientX, startY = evt.clientY, origin = paper.translate();
         const onMouseMove = (e) => paper.translate(origin.tx + (e.clientX - startX), origin.ty + (e.clientY - startY));
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
+        const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
 
-    paper.on('link:pointerdown', (linkView) => {
-        deselectAll();
-        linkView.model.toFront();
-        const tools = new joint.dia.ToolsView({
-            tools: [
-                new joint.linkTools.Vertices(),
-                new CustomSourceArrowhead(),
-                new joint.linkTools.TargetArrowhead({ offset: -1 }),
-                new joint.linkTools.Remove({ distance: 20 })
-            ]
-        });
-        linkView.addTools(tools);
-    });
-
-    function findNearestClearPosition(x, y, w, h, excludeElement = null) {
-        const clearancePx = CLEARANCE_UNITS * GRID_SIZE;
-        let currentX = Math.round(x / GRID_SIZE) * GRID_SIZE;
-        let currentY = Math.round(y / GRID_SIZE) * GRID_SIZE;
-        
-        const isPositionObstructed = (px, py) => {
-            const rect = new joint.g.Rect(px, py, w, h).inflate(clearancePx);
-            return graph.getElements().some(el => {
-                if (excludeElement && el.id === excludeElement.id) return false;
-                return rect.intersect(el.getBBox().clone().inflate(clearancePx));
-            });
+    function findNearestClearPosition(x, y, w, h, exclude = null) {
+        const clearance = 4 * GRID_SIZE;
+        let cx = Math.round(x / GRID_SIZE) * GRID_SIZE, cy = Math.round(y / GRID_SIZE) * GRID_SIZE;
+        const isObs = (px, py) => {
+            const rect = new joint.g.Rect(px, py, w, h).inflate(clearance);
+            return graph.getElements().some(el => (exclude && el.id === exclude.id) ? false : rect.intersect(el.getBBox().clone().inflate(clearance)));
         };
-
-        if (!isPositionObstructed(currentX, currentY)) return { x: currentX, y: currentY };
-
-        let spiralLevel = 1;
-        while (spiralLevel < 30) {
-            for (let dx = -spiralLevel; dx <= spiralLevel; dx++) {
-                for (let dy = -spiralLevel; dy <= spiralLevel; dy++) {
-                    if (Math.abs(dx) !== spiralLevel && Math.abs(dy) !== spiralLevel) continue;
-                    const testX = currentX + (dx * GRID_SIZE);
-                    const testY = currentY + (dy * GRID_SIZE);
-                    if (!isPositionObstructed(testX, testY)) return { x: testX, y: testY };
+        if (!isObs(cx, cy)) return { x: cx, y: cy };
+        let s = 1;
+        while (s < 30) {
+            for (let dx = -s; dx <= s; dx++) {
+                for (let dy = -s; dy <= s; dy++) {
+                    if (Math.abs(dx) !== s && Math.abs(dy) !== s) continue;
+                    const tx = cx + (dx * GRID_SIZE), ty = cy + (dy * GRID_SIZE);
+                    if (!isObs(tx, ty)) return { x: tx, y: ty };
                 }
             }
-            spiralLevel++;
+            s++;
         }
-        return { x: currentX, y: currentY };
+        return { x: cx, y: cy };
     }
 
+    function autoPortDistributor(element) {
+        if (!isAutoPortEnabled) return;
+        graph.getConnectedLinks(element).forEach(link => {
+            const source = link.getSourceElement(), target = link.getTargetElement();
+            if (!source || !target) return;
+            const getBest = (el, other) => {
+                const targetAngle = Math.atan2(other.center().y - el.getBBox().center().y, other.center().x - el.getBBox().center().y);
+                let best = null, min = Infinity;
+                el.getPorts().forEach(p => {
+                    const pPos = el.getPortsPositions('all')[p.id];
+                    const pAngle = Math.atan2(pPos.y - (el.getBBox().height / 2), pPos.x - (el.getBBox().width / 2));
+                    let d = Math.abs(targetAngle - pAngle);
+                    if (d > Math.PI) d = 2 * Math.PI - d;
+                    if (d < min) { min = d; best = p.id; }
+                });
+                return best;
+            };
+            const bS = getBest(source, target.getBBox()), bT = getBest(target, source.getBBox());
+            if (link.get('source').port !== bS) link.source({ id: source.id, port: bS });
+            if (link.get('target').port !== bT) link.target({ id: target.id, port: bT });
+        });
+    }
+
+    graph.on('change:position', (el) => autoPortDistributor(el));
+
     function createNode(type, x, y, label) {
-        let shape;
-        let points = [];
-        const localPoint = paper.clientToLocalPoint({ x, y });
-        const initialW = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 140;
-        const initialH = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 50;
+        let shape, points = [], local = paper.clientToLocalPoint({ x, y });
+        const iW = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 140, iH = (type === 'square' || type === 'circle' || type === 'diamond') ? 80 : 50;
+        const pos = findNearestClearPosition(local.x - iW / 2, local.y - iH / 2, iW, iH);
+        const markup = [{ tagName: 'rect', selector: 'body', className: 'body' }, { tagName: 'image', selector: 'image', className: 'image' }, { tagName: 'text', selector: 'label', className: 'label' }, { tagName: 'text', selector: 'descriptionLabel', className: 'descriptionLabel' }];
         
-        const pos = findNearestClearPosition(localPoint.x - initialW / 2, localPoint.y - initialH / 2, initialW, initialH);
+        if (type === 'diamond') { shape = new namespace.standard.Polygon(); shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...markup.slice(1)]; shape.attr({ body: { refPoints: '0,10 10,0 20,10 10,20' }}); }
+        else if (type === 'triangle') { shape = new namespace.standard.Polygon(); shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...markup.slice(1)]; points = [[10,0], [20,20], [0,20]]; shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }}); }
+        else if (type === 'hexagon') { shape = new namespace.standard.Polygon(); shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...markup.slice(1)]; points = [[5,0], [15,0], [20,10], [15,20], [5,20], [0,10]]; shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }}); }
+        else if (type === 'pentagon') { shape = new namespace.standard.Polygon(); shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...markup.slice(1)]; points = [[10,0], [20,7], [16,20], [4,20], [0,7]]; shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }}); }
+        else if (type === 'octagon') { shape = new namespace.standard.Polygon(); shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...markup.slice(1)]; points = [[6,0], [14,0], [20,6], [20,14], [14,20], [6,20], [0,14], [0,6]]; shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }}); }
+        else if (type === 'ellipse' || type === 'circle') { shape = new namespace.standard.Ellipse(); shape.markup = [{ tagName: 'ellipse', selector: 'body', className: 'body' }, ...markup.slice(1)]; }
+        else { shape = new namespace.standard.Rectangle(); shape.markup = markup; }
 
-        const baseMarkup = [
-            { tagName: 'rect', selector: 'body', className: 'body' },
-            { tagName: 'image', selector: 'image', className: 'image' },
-            { tagName: 'text', selector: 'label', className: 'label' },
-            { tagName: 'text', selector: 'descriptionLabel', className: 'descriptionLabel' }
-        ];
-        
-        switch(type) {
-            case 'diamond':
-                shape = new namespace.standard.Polygon();
-                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                shape.attr({ body: { refPoints: '0,10 10,0 20,10 10,20' }});
-                break;
-            case 'triangle':
-                shape = new namespace.standard.Polygon();
-                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                points = [[10,0], [20,20], [0,20]];
-                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
-                break;
-            case 'hexagon':
-                shape = new namespace.standard.Polygon();
-                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                points = [[5,0], [15,0], [20,10], [15,20], [5,20], [0,10]];
-                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
-                break;
-            case 'pentagon':
-                shape = new namespace.standard.Polygon();
-                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                points = [[10,0], [20,7], [16,20], [4,20], [0,7]];
-                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
-                break;
-            case 'octagon':
-                shape = new namespace.standard.Polygon();
-                shape.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                points = [[6,0], [14,0], [20,6], [20,14], [14,20], [6,20], [0,14], [0,6]];
-                shape.attr({ body: { refPoints: points.map(p => p.join(',')).join(' ') }});
-                break;
-            case 'ellipse':
-            case 'circle':
-                shape = new namespace.standard.Ellipse();
-                shape.markup = [{ tagName: 'ellipse', selector: 'body', className: 'body' }, ...baseMarkup.slice(1)];
-                break;
-            default:
-                shape = new namespace.standard.Rectangle();
-                shape.markup = baseMarkup;
-        }
-
-        shape.position(pos.x, pos.y).resize(initialW, initialH);
+        shape.position(pos.x, pos.y).resize(iW, iH).prop('ports/groups', { all: { position: points.length > 0 ? 'absolute' : 'ellipseSpread', attrs: { circle: { r: 6, fill: '#3498db', magnet: true, stroke: '#fff', strokeWidth: 2 } } } });
         
         const portData = [];
-        if (points.length > 0) {
-            for (let i = 0; i < points.length; i++) {
-                const p1 = points[i], p2 = points[(i + 1) % points.length];
-                const midX = (p1[0] + p2[0]) / 2, midY = (p1[1] + p2[1]) / 2;
-                portData.push({ group: 'all', args: { x: (midX / 20) * 100 + '%', y: (midY / 20) * 100 + '%' } });
-            }
-        } else {
-            portData.push({ group: 'all' }, { group: 'all' }, { group: 'all' }, { group: 'all' });
-        }
-
-        shape.prop('ports/groups', { 
-            all: { 
-                position: points.length > 0 ? 'absolute' : 'ellipseSpread', 
-                attrs: { circle: { r: 6, fill: '#3498db', magnet: true, stroke: '#fff', strokeWidth: 2 } } 
-            } 
-        });
-        shape.addPorts(portData);
-
-        shape.attr({
-            body: { fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2, rx: 5, ry: 5 },
-            image: { display: 'none' },
-            label: { text: label, fill: '#212529', fontSize: 13, fontWeight: 'bold', pointerEvents: 'none' },
-            descriptionLabel: { text: '', fill: '#6c757d', fontSize: 11, pointerEvents: 'none' }
-        });
-        shape.set({ type, description: '', status: 'pending', priority: 1, imageUrl: '' });
-        shape.addTo(graph);
-        setTimeout(() => {
-            const view = paper.findViewByModel(shape);
-            if (view) paper.trigger('element:pointerdown', view, {});
-            autoSize(shape);
-        }, 50);
+        if (points.length === 0) portData.push({ group: 'all', args: { x: '50%', y: '0%' } }, { group: 'all', args: { x: '100%', y: '50%' } }, { group: 'all', args: { x: '50%', y: '100%' } }, { group: 'all', args: { x: '0%', y: '50%' } });
+        else for (let i = 0; i < points.length; i++) { const midX = (points[i][0] + points[(i + 1) % points.length][0]) / 2, midY = (points[i][1] + points[(i + 1) % points.length][1]) / 2; portData.push({ group: 'all', args: { x: (midX / 20) * 100 + '%', y: (midY / 20) * 100 + '%' } }); }
+        
+        shape.addPorts(portData).attr({ body: { fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2, rx: 5, ry: 5 }, image: { display: 'none' }, label: { text: label, fill: '#212529', fontSize: 13, fontWeight: 'bold', pointerEvents: 'none' }, descriptionLabel: { text: '', fill: '#6c757d', fontSize: 11, pointerEvents: 'none' } });
+        shape.set({ type, description: '', status: 'pending', priority: 1, imageUrl: '', imageWidth: 32, imageHeight: 32, fontSizePercent: 100 }).addTo(graph);
+        setTimeout(() => { const v = paper.findViewByModel(shape); if (v) paper.trigger('element:pointerdown', v, {}); autoSize(shape); }, 50);
         return shape;
     }
 
     container.addEventListener('dragover', e => e.preventDefault());
-    container.addEventListener('drop', e => {
-        e.preventDefault();
-        const type = e.dataTransfer.getData('type');
-        createNode(type, e.clientX, e.clientY, type.toUpperCase());
-    });
+    container.addEventListener('drop', e => { e.preventDefault(); createNode(e.dataTransfer.getData('type'), e.clientX, e.clientY, e.dataTransfer.getData('type').toUpperCase()); });
     document.querySelectorAll('.node-template').forEach(el => el.addEventListener('dragstart', e => e.dataTransfer.setData('type', e.target.dataset.type)));
 
     function layout() {}
-    createNode('ellipse', 400, 100, 'ELLIPSE');
-    createNode('rect', 400, 300, 'RECTANGLE');
+    createNode('ellipse', 400, 100, 'START');
+    createNode('rect', 400, 300, 'PROCESS');
 </script>
 </body>
 </html>
