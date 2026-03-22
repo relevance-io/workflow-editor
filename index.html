@@ -792,6 +792,25 @@ class Canvas extends EventEmitter {
     this._paperEl = this._canvasContainer.appendChild(this._createEl('div', 'wf-paper'));
 
     // Bottom-left controls
+    // Top-right controls
+    const topRight = this._canvasContainer.appendChild(this._createEl('div', 'wf-top-right'));
+    topRight.style.cssText = 'position:absolute;top:20px;right:20px;z-index:100;display:flex;gap:8px;';
+
+    this._exportBtn = topRight.appendChild(this._createEl('button', 'wf-ctrl-btn'));
+    this._exportBtn.style.cssText = 'width:auto;padding:0 12px;font-size:13px;';
+    this._exportBtn.title = 'Export JSON';
+    this._exportBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export`;
+
+    this._importBtn = topRight.appendChild(this._createEl('button', 'wf-ctrl-btn'));
+    this._importBtn.style.cssText = 'width:auto;padding:0 12px;font-size:13px;';
+    this._importBtn.title = 'Import JSON';
+    this._importBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Import`;
+
+    this._importFileInput = this._canvasContainer.appendChild(this._createEl('input'));
+    this._importFileInput.type = 'file';
+    this._importFileInput.accept = '.json';
+    this._importFileInput.style.display = 'none';
+
     const bottomLeft = this._canvasContainer.appendChild(this._createEl('div', 'wf-bottom-left'));
     this._autoPortBtn = bottomLeft.appendChild(this._createEl('button', 'wf-ctrl-btn active'));
     this._autoPortBtn.title = 'Toggle Auto Port Switching';
@@ -957,6 +976,43 @@ class Canvas extends EventEmitter {
   // Internal: UI binding
   // ═══════════════════════════════════════════
   _bindUI() {
+    // Export / Import
+    this._exportBtn.addEventListener('click', () => {
+      const json = this.serialize();
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.open();
+        w.document.write('<pre>' + json.replace(/</g, '&lt;') + '</pre>');
+        w.document.close();
+      } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard?.writeText(json).then(() => {
+          alert('Diagram JSON copied to clipboard!');
+        }).catch(() => {
+          prompt('Copy the JSON below:', json);
+        });
+      }
+    });
+
+    this._importBtn.addEventListener('click', () => this._importFileInput.click());
+
+    this._importFileInput.addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          this._deselectAll();
+          this._shapes.clear();
+          this._connections.clear();
+          this.deserialize(ev.target.result);
+        } catch(err) {
+          alert('Failed to import: invalid JSON file.');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // reset so same file can be re-imported
+    });
+
     // Sidebar toggles
     this._leftCollapseBtn.addEventListener('click',  () => this._toggleSidebar(this._leftSidebar));
     this._rightCollapseBtn.addEventListener('click', () => this._toggleSidebar(this._rightSidebar));
