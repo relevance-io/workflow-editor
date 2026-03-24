@@ -696,12 +696,18 @@ class Canvas extends EventEmitter {
       this._contextMenu.querySelector('[data-action="duplicate"]').style.display=this._shapes.has(cv.model.id)?'flex':'none';
     });
     this._paper.on('blank:pointerdown',evt=>{
-      this._collapseBothSidebars(); this._deselectAll();
+      this._collapseBothSidebars();
       if(this._isMobile())return;
       const sx=evt.clientX,sy=evt.clientY,o=this._paper.translate();
       const onMove=e=>this._paper.translate(o.tx+(e.clientX-sx),o.ty+(e.clientY-sy));
-      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
-      document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+      const onUp=e=>{
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+        const dx=Math.abs(e.clientX-sx),dy=Math.abs(e.clientY-sy);
+        if(dx<5&&dy<5)this._deselectAll();
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
     });
     this._paper.on('link:connect',lv=>{
       const link=lv.model,srcEl=link.getSourceElement(),tgtEl=link.getTargetElement();
