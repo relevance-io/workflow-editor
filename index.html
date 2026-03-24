@@ -686,7 +686,7 @@ class Canvas extends EventEmitter {
       const source = idMap[c.sourceId], target = idMap[c.targetId];
       if (!source || !target) continue;
 
-      const conn = source.connect(target, null, null);
+      const conn = source.connect(target, c.sourcePort, c.targetPort);
       if (!conn) continue;
 
       if (c.label)         conn.label        = c.label;
