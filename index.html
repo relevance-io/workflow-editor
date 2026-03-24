@@ -709,7 +709,17 @@ class Canvas extends EventEmitter {
     const cells = this._graph.getCells();
     this._graph.resetCells(cells);
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    this._graph.getElements().forEach(el => this._autoPortDistributor(el));
+
+    // resetCells drops custom attributes like sourcePort/targetPort — restore them
+    for (const c of connections) {
+      const conn = [...this._connections.values()].find(
+        cn => cn.source._cell.id === idMap[c.sourceId]?._cell.id &&
+              cn.target._cell.id === idMap[c.targetId]?._cell.id
+      );
+      if (!conn) continue;
+      if (c.sourcePort != null) conn._link.set('sourcePort', c.sourcePort);
+      if (c.targetPort != null) conn._link.set('targetPort', c.targetPort);
+    }
 
     return this;
   }
@@ -1328,7 +1338,11 @@ class Canvas extends EventEmitter {
     // knows to leave them alone. undefined = auto-route freely.
     if (sourcePort !== null) link.set('sourcePort', sourcePort);
     if (targetPort !== null) link.set('targetPort', targetPort);
+    if (sourcePort !== null) link.set('sourcePort', sourcePort);
+    if (targetPort !== null) link.set('targetPort', targetPort);
+    this._graph.startBatch('connection');
     link.addTo(this._graph);
+    this._graph.stopBatch('connection');
     const conn=new Connection(link,source,target,this);
     this._connections.set(link.id,conn);
     this.emit('connection:add',conn);
@@ -1386,8 +1400,7 @@ class Canvas extends EventEmitter {
   _autoPortDistributor(element) {
     if (!this._autoPortEnabled || this._deserializing) return;
     this._graph.getConnectedLinks(element).forEach(link => {
-      if (typeof link.get('sourcePort') === 'number') return;
-      if (typeof link.get('targetPort') === 'number') return;
+      if (typeof link.get('sourcePort') === 'number' || typeof link.get('targetPort') === 'number') return;
       const src=link.getSourceElement(), tgt=link.getTargetElement(); if (!src||!tgt) return;
 
       const centerOf = el => {
