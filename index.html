@@ -132,6 +132,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.4.1/backbone-min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jointjs/3.7.7/joint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
 
 <script>
 'use strict';
@@ -467,9 +468,9 @@ function _attachPorts(cell, points) {
   });
   const portData = points.length === 0
     ? [
-        { group:'all', args:{ x:'50%', y:'0%', dy:-1 } },  // top — 1px outside for router clearance
+        { group:'all', args:{ x:'50%', y:'0%', dy:-1 } },
         { group:'all', args:{ x:'100%', y:'50%' } },
-        { group:'all', args:{ x:'50%', y:'100%', dy:1 } }, // bottom — 1px outside
+        { group:'all', args:{ x:'50%', y:'100%', dy:1 } },
         { group:'all', args:{ x:'0%',  y:'50%'  } }
       ]
     : points.map((p,i) => {
@@ -530,7 +531,6 @@ class Canvas extends EventEmitter {
     }
   }
 
-  // ── Public: register shape in library ──
   registerShape(label, ShapeClass) {
     const el = this._library.appendChild(this._createEl('div', 'wf-node-template'));
     el.textContent = label; el.draggable = true; el.dataset.shapeLabel = label;
@@ -544,8 +544,6 @@ class Canvas extends EventEmitter {
     this._registeredShapes[label] = ShapeClass;
   }
 
-  // ── Public: addShape — returns a Promise that resolves to the shape
-  //    once the cell is fully rendered and ports are laid out ──
   addShape(shape, x, y) {
     const ns = joint.shapes, container = this._canvasContainer;
     const cx = x ?? container.clientWidth  / 2;
@@ -570,15 +568,15 @@ class Canvas extends EventEmitter {
     this._deselectAll();
 
     const ready = (async () => {
-      await this._waitForRender(cell);      // wait for initial render
-      await this._autoSizeAsync(cell);      // resize + wait for DOM flush
+      await this._waitForRender(cell);
+      await this._autoSizeAsync(cell);
       if (shape._renderFn) shape._renderFn(shape);
-      await this._waitForRender(cell);      // wait for renderFn changes to flush
+      await this._waitForRender(cell);
       return shape;
     })();
 
     this.emit('shape:add', shape);
-    return ready; // callers can await this or ignore it
+    return ready;
   }
 
   removeShape(shape) { shape.remove(); this._shapes.delete(shape.id); this.emit('shape:remove', shape); }
@@ -608,7 +606,42 @@ class Canvas extends EventEmitter {
     return this;
   }
 
-  // ── Public: serialize / deserialize ──
+  autoArrange() {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: 'TB', ranksep: 60, nodesep: 40, marginx: 40, marginy: 40 });
+    g.setDefaultEdgeLabel(() => ({}));
+
+    // Add nodes with their current sizes
+    this._graph.getElements().forEach(el => {
+      const { width, height } = el.size();
+      g.setNode(el.id, { width, height });
+    });
+
+    // Add edges
+    this._graph.getLinks().forEach(link => {
+      const src = link.getSourceElement(), tgt = link.getTargetElement();
+      if (src && tgt) g.setEdge(src.id, tgt.id);
+    });
+
+    dagre.layout(g);
+
+    // Apply positions — keep ports/connections intact, distributor re-routes
+    this._graph.getElements().forEach(el => {
+      const node = g.node(el.id);
+      if (!node) return;
+      // Dagre gives center x/y, JointJS uses top-left
+      el.position(Math.round(node.x - node.width / 2), Math.round(node.y - node.height / 2));
+    });
+
+    // Re-run distributor on all elements after layout
+    if (this._autoPortEnabled) {
+      this._graph.getElements().forEach(el => this._autoPortDistributor(el));
+    }
+
+    this.moveToCenter();
+    return this;
+  }
+
   serialize() {
     const shapes = [...this._shapes.values()].map(s => ({
       id: s._cell.id, shapeClass: s.constructor.name, x: s.x, y: s.y,
@@ -649,7 +682,6 @@ class Canvas extends EventEmitter {
       ...Object.fromEntries(Object.entries(this._registeredShapes || {}).map(([,cls]) => [cls.name, cls]))
     };
 
-    // Disable auto-port so the distributor doesn't fire while we're placing shapes
     const prevAutoPort = this._autoPortEnabled;
     this._autoPortEnabled = false;
 
@@ -658,8 +690,6 @@ class Canvas extends EventEmitter {
     for (const s of shapes) {
       const Cls = classMap[s.shapeClass];
       if (!Cls) { console.warn(`Unknown shape class: ${s.shapeClass}`); continue; }
-      // Build the shape and pass saved position directly into _buildCell
-      // so the cell is never at the wrong position — no correction needed after
       const shape = new Cls({ ...s.props, ...s.customProps });
       const cell = shape._buildCell({ x: s.x, y: s.y }, joint.shapes);
       cell.attr('label/text', shape._label);
@@ -672,7 +702,6 @@ class Canvas extends EventEmitter {
       Object.entries(shape._customProps).forEach(([k, v]) => cell.set(`custom_${k}`, v));
       cell.addTo(this._graph);
       this._shapes.set(cell.id, shape);
-      // Wait for full render cycle before moving to next shape
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       this._autoSize(cell);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -681,7 +710,6 @@ class Canvas extends EventEmitter {
       idMap[s.id] = shape;
     }
 
-    // All shapes fully rendered — wire connections synchronously
     for (const c of connections) {
       const source = idMap[c.sourceId], target = idMap[c.targetId];
       if (!source || !target) continue;
@@ -704,22 +732,21 @@ class Canvas extends EventEmitter {
 
     this._deserializing = false;
 
-    // Full re-render: reset all cells so the paper rebuilds every view
-    // from scratch with correct positions, then route links cleanly.
     const cells = this._graph.getCells();
     this._graph.resetCells(cells);
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-    // resetCells drops custom attributes like sourcePort/targetPort — restore them
-    for (const c of connections) {
-      const conn = [...this._connections.values()].find(
-        cn => cn.source._cell.id === idMap[c.sourceId]?._cell.id &&
-              cn.target._cell.id === idMap[c.targetId]?._cell.id
+    // resetCells drops custom attributes — restore sourcePort/targetPort on links
+    this._graph.getLinks().forEach(link => {
+      const conn = this._connections.get(link.id); if (!conn) return;
+      const saved = connections.find(
+        c => idMap[c.sourceId]?._cell.id === conn.source._cell.id &&
+             idMap[c.targetId]?._cell.id === conn.target._cell.id
       );
-      if (!conn) continue;
-      if (c.sourcePort != null) conn._link.set('sourcePort', c.sourcePort);
-      if (c.targetPort != null) conn._link.set('targetPort', c.targetPort);
-    }
+      if (!saved) return;
+      if (saved.sourcePort != null) link.set('sourcePort', saved.sourcePort);
+      if (saved.targetPort != null) link.set('targetPort', saved.targetPort);
+    });
 
     return this;
   }
@@ -763,6 +790,7 @@ class Canvas extends EventEmitter {
     this._zoomInBtn     = this._zoomBtn(zg,'Zoom In','+');
     this._zoomOutBtn    = this._zoomBtn(zg,'Zoom Out','−');
     this._zoomCenterBtn = this._zoomBtn(zg,'Center',`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`);
+    this._autoArrangeBtn = this._zoomBtn(zg,'Auto Arrange',`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="4" rx="1"/><rect x="3" y="10" width="7" height="4" rx="1"/><rect x="3" y="17" width="7" height="4" rx="1"/><rect x="14" y="5" width="7" height="4" rx="1"/><rect x="14" y="15" width="7" height="4" rx="1"/><line x1="10" y1="5" x2="14" y2="7"/><line x1="10" y1="12" x2="14" y2="7"/><line x1="10" y1="12" x2="14" y2="17"/><line x1="10" y1="19" x2="14" y2="17"/></svg>`);
 
     this._contextMenu = this._canvasContainer.appendChild(this._createEl('div', 'wf-context-menu'));
     this._contextMenu.innerHTML = `
@@ -896,6 +924,7 @@ class Canvas extends EventEmitter {
     this._zoomInBtn.addEventListener('click',     () => this.zoomIn());
     this._zoomOutBtn.addEventListener('click',    () => this.zoomOut());
     this._zoomCenterBtn.addEventListener('click', () => this.moveToCenter());
+    this._autoArrangeBtn.addEventListener('click', () => this.autoArrange());
 
     this._paper.el.addEventListener('wheel', e => {
       e.preventDefault();
@@ -1329,17 +1358,12 @@ class Canvas extends EventEmitter {
   _createConnection(source, target, sourcePort, targetPort) {
     const link = new joint.shapes.standard.Link({ attrs:{ line:{ stroke:'#495057', strokeWidth:2, targetMarker:MARKERS.classic } } });
     const srcPorts=source._cell.getPorts(), tgtPorts=target._cell.getPorts();
-    // Verify port exists in model before using it
     const srcPortObj = sourcePort !== null ? srcPorts[sourcePort-1] : null;
     const tgtPortObj = targetPort !== null ? tgtPorts[targetPort-1] : null;
     const srcPort = srcPortObj ? srcPortObj.id : undefined;
     const tgtPort = tgtPortObj ? tgtPortObj.id : undefined;
     link.source(srcPort ? { id:source._cell.id, port:srcPort } : { id:source._cell.id });
     link.target(tgtPort ? { id:target._cell.id, port:tgtPort } : { id:target._cell.id });
-    // Only store explicit port assignments (non-null) so the distributor
-    // knows to leave them alone. undefined = auto-route freely.
-    if (sourcePort !== null) link.set('sourcePort', sourcePort);
-    if (targetPort !== null) link.set('targetPort', targetPort);
     if (sourcePort !== null) link.set('sourcePort', sourcePort);
     if (targetPort !== null) link.set('targetPort', targetPort);
     this._graph.startBatch('connection');
@@ -1430,8 +1454,8 @@ class Canvas extends EventEmitter {
 
       const srcCenter = centerOf(src), tgtCenter = centerOf(tgt);
       const bS=getBest(src, tgtCenter), bT=getBest(tgt, srcCenter);
-      if (link.get('source').port!==bS) link.source({id:src.id,port:bS});
-      if (link.get('target').port!==bT) link.target({id:tgt.id,port:bT});
+      if (link.source().port!==bS) { link.source({id:src.id,port:bS}); link.unset('sourcePort'); }
+      if (link.target().port!==bT) { link.target({id:tgt.id,port:bT}); link.unset('targetPort'); }
     });
   }
 
