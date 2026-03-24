@@ -677,8 +677,12 @@ class Canvas extends EventEmitter {
       const dy=Math.abs(evt.clientY-(this._pointerDownPos?.y??evt.clientY));
       if(dx<5&&dy<5&&this._wasAlreadySelected&&this._rightSidebar.classList.contains('wf-collapsed'))this._toggleSidebar(this._rightSidebar);
       this._pointerDownPos=null; this._wasAlreadySelected=false;
-      const shape=this._shapes.get(cv.model.id);
-      if(shape){const bb=shape._cell.getBBox();const p=this._findClearPosition(bb.x,bb.y,bb.width,bb.height,shape._cell);shape._cell.position(p.x,p.y);}
+      // Only snap to clear position on desktop — on mobile the touch pan handler
+      // moves the paper, not the shape, so this would cause erratic jumps
+      if(!this._isMobile()){
+        const shape=this._shapes.get(cv.model.id);
+        if(shape){const bb=shape._cell.getBBox();const p=this._findClearPosition(bb.x,bb.y,bb.width,bb.height,shape._cell);shape._cell.position(p.x,p.y);}
+      }
     });
     this._paper.on('link:pointerdown',lv=>{
       const conn=this._connections.get(lv.model.id); if(!conn)return;
