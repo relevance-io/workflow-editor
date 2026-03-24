@@ -16,7 +16,8 @@
     .wf-sidebar-left  { border-right:1px solid #dee2e6; }
     .wf-sidebar-right { border-left:1px solid #dee2e6; }
     .wf-sidebar-header { padding:0 15px; background:#fff; border-bottom:1px solid #dee2e6; font-weight:bold; display:flex; justify-content:space-between; align-items:center; height:48px; min-height:48px; max-height:48px; white-space:nowrap; overflow:hidden; }
-    .wf-sidebar.wf-collapsed .wf-sidebar-header { justify-content:center; padding:0; border-bottom:none; }
+    .wf-sidebar.wf-collapsed .wf-sidebar-header { justify-content:center; padding:0; border-bottom:none; flex-direction:column; gap:8px; height:auto; min-height:0; max-height:none; padding:12px 0; }
+    .wf-sidebar.wf-collapsed .wf-collapsed-label { display:block; font-size:11px; font-weight:600; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; writing-mode:vertical-rl; }
     .wf-sidebar.wf-collapsed .wf-sidebar-header .wf-sidebar-title,
     .wf-sidebar.wf-collapsed .wf-sidebar-body,
     .wf-sidebar.wf-collapsed .wf-header-actions { display:none !important; }
@@ -429,7 +430,7 @@ class Canvas extends EventEmitter {
 
     this._leftSidebar=this._el.appendChild(this._createEl('div','wf-sidebar wf-sidebar-left'));
     const lh=this._leftSidebar.appendChild(this._createEl('div','wf-sidebar-header'));
-    lh.innerHTML=`<span class="wf-sidebar-title">Library</span><button class="wf-collapse-btn" title="Toggle Library"><svg class="wf-collapse-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>`;
+    lh.innerHTML=`<span class="wf-sidebar-title">Library</span><button class="wf-collapse-btn" title="Toggle Library"><svg class="wf-collapse-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button><span class="wf-collapsed-label" style="display:none">Library</span>`;
     this._leftCollapseBtn=lh.querySelector('.wf-collapse-btn'); this._leftCollapseIcon=lh.querySelector('.wf-collapse-icon');
     this._library=this._leftSidebar.appendChild(this._createEl('div','wf-library wf-sidebar-body'));
     this._buildLibrary();
@@ -478,6 +479,7 @@ class Canvas extends EventEmitter {
     rh.innerHTML=`
       <button class="wf-collapse-btn" title="Toggle Properties"><svg class="wf-collapse-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
       <span class="wf-sidebar-title">Properties</span>
+      <span class="wf-collapsed-label" style="display:none">Properties</span>
       <div class="wf-header-actions wf-sidebar-body" style="display:none;">
         <button class="wf-header-btn" data-action="focus" title="Center on Element"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button class="wf-header-btn" data-action="duplicate" title="Duplicate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
@@ -924,9 +926,10 @@ class Canvas extends EventEmitter {
     const isLeft=sb===this._leftSidebar, icon=isLeft?this._leftCollapseIcon:this._rightCollapseIcon;
     const tBefore=this._paper.translate(), collapsed=sb.classList.toggle('wf-collapsed');
     icon.style.transform=collapsed?'rotate(180deg)':'rotate(0deg)';
+    sb.querySelector('.wf-collapsed-label').style.display=collapsed?'block':'none';
     if(this._isMobile()&&!collapsed){
       const other=isLeft?this._rightSidebar:this._leftSidebar, oIcon=isLeft?this._rightCollapseIcon:this._leftCollapseIcon;
-      if(!other.classList.contains('wf-collapsed')){other.classList.add('wf-collapsed');oIcon.style.transform='rotate(180deg)';}
+      if(!other.classList.contains('wf-collapsed')){other.classList.add('wf-collapsed');oIcon.style.transform='rotate(180deg)';other.querySelector('.wf-collapsed-label').style.display='block';}
     }
     const iv=setInterval(()=>{const c=this._canvasContainer;this._paper.setDimensions(c.clientWidth,c.clientHeight);this._paper.translate(tBefore.tx,tBefore.ty);},16);
     setTimeout(()=>clearInterval(iv),350);
@@ -936,6 +939,7 @@ class Canvas extends EventEmitter {
   _setSidebarCollapsed(sb, collapsed) {
     const isLeft=sb===this._leftSidebar, icon=isLeft?this._leftCollapseIcon:this._rightCollapseIcon;
     sb.classList.toggle('wf-collapsed',collapsed); icon.style.transform=collapsed?'rotate(180deg)':'rotate(0deg)';
+    sb.querySelector('.wf-collapsed-label').style.display=collapsed?'block':'none';
   }
 
   _collapseBothSidebars() {
