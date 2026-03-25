@@ -107,8 +107,8 @@ class EventBus {
 class PathPoint extends EventBus {
   constructor(parentEdge, pointIndex) {
     super();
-    this.id         = `pathpoint-${Math.random().toString(36).slice(2)}`;
-    this.edge       = parentEdge;
+    this.id = `pathpoint-${Math.random().toString(36).slice(2)}`;
+    this.edge = parentEdge;
     this.pointIndex = pointIndex;
   }
 
@@ -128,8 +128,8 @@ class PathPoint extends EventBus {
     return this;
   }
 
-  moveBy(dx, dy) {
-    return this.moveTo(this.x + dx, this.y + dy);
+  moveBy(deltaX, deltaY) {
+    return this.moveTo(this.x + deltaX, this.y + deltaY);
   }
 
   remove() {
@@ -155,10 +155,10 @@ const ARROW_MARKERS = {
 class Edge extends EventBus {
   constructor(link, sourceNode, targetNode, editor) {
     super();
-    this.link       = link;
+    this.link = link;
     this.sourceNode = sourceNode;
     this.targetNode = targetNode;
-    this.editor     = editor;
+    this.editor = editor;
     this.pathPoints = [];
   }
 
@@ -263,7 +263,7 @@ class Edge extends EventBus {
 
   get connectorType() {
     const connector = this.link.connector()?.name;
-    const router    = this.link.router()?.name;
+    const router = this.link.router()?.name;
     if (connector === 'smooth') {
       return 'curved';
     }
@@ -342,7 +342,7 @@ class Edge extends EventBus {
 
   _applyLabel(text) {
     const fontSize = 12 * ((this.link.get('fontSizePercent') || 100) / 100);
-    const color    = this.link.get('labelColor') || '#333333';
+    const color = this.link.get('labelColor') || '#333333';
     if (text) {
       this.link.labels([{
         attrs: {
@@ -390,13 +390,13 @@ class Edge extends EventBus {
 class Node extends EventBus {
   constructor(options = {}) {
     super();
-    this._label       = typeof options === 'string' ? options : (options.label ?? '');
+    this._label = typeof options === 'string' ? options : (options.label ?? '');
     this._initOptions = typeof options === 'string' ? {} : options;
-    this.cell         = null;
-    this.editor       = null;
-    this.schema       = {};
-    this.customProps  = {};
-    this.renderFn     = null;
+    this.cell = null;
+    this.editor = null;
+    this.schema = {};
+    this.customProps = {};
+    this.renderFn = null;
   }
 
   getCustomProperty(key) {
@@ -583,8 +583,8 @@ class Node extends EventBus {
     return this;
   }
 
-  moveBy(dx, dy) {
-    return this.moveTo(this.x + dx, this.y + dy);
+  moveBy(deltaX, deltaY) {
+    return this.moveTo(this.x + deltaX, this.y + deltaY);
   }
 
   toFront() {
@@ -612,11 +612,11 @@ class Node extends EventBus {
   }
 
   getIncomingEdges() {
-    return this.getEdges().filter(e => e.target === this);
+    return this.getEdges().filter(edge => edge.target === this);
   }
 
   getOutgoingEdges() {
-    return this.getEdges().filter(e => e.source === this);
+    return this.getEdges().filter(edge => edge.source === this);
   }
 
   connect(targetNode, sourcePortIndex = null, targetPortIndex = null) {
@@ -654,12 +654,12 @@ Node.define = function(BaseNodeClass, defaultOptions = {}, schema = {}, renderFn
   class CustomNode extends BaseNodeClass {
     constructor(options = {}) {
       super();
-      this.customProps     = {};
-      this.schema          = schema;
-      this.renderFn        = renderFn;
+      this.customProps = {};
+      this.schema = schema;
+      this.renderFn = renderFn;
       this._defaultOptions = defaultOptions;
 
-      const merged  = { ...defaultOptions, ...options };
+      const merged = { ...defaultOptions, ...options };
       const builtIns = ['label','labelColor','labelFontSize','description','descriptionColor','backgroundColor','borderColor','borderWidth','imageUrl','imageWidth','imageHeight','status','priority'];
       builtIns.forEach(key => {
         if (merged[key] !== undefined) {
@@ -668,8 +668,8 @@ Node.define = function(BaseNodeClass, defaultOptions = {}, schema = {}, renderFn
       });
       this._label = merged.label ?? defaultOptions.label ?? '';
 
-      Object.entries(schema).forEach(([key, def]) => {
-        this.customProps[key] = options[key] !== undefined ? options[key] : def.default;
+      Object.entries(schema).forEach(([key, fieldDefinition]) => {
+        this.customProps[key] = options[key] !== undefined ? options[key] : fieldDefinition.default;
       });
     }
 
@@ -719,8 +719,8 @@ class Rectangle extends Node {
     return 'rect';
   }
 
-  _buildCell(pos, ns) {
-    return _buildRectangleCell(pos, ns, 'rect', 140, 50);
+  _buildCell(position, namespace) {
+    return _buildRectangleCell(position, namespace, 'rect', 140, 50);
   }
 }
 
@@ -733,8 +733,8 @@ class Square extends Node {
     return 'square';
   }
 
-  _buildCell(pos, ns) {
-    return _buildRectangleCell(pos, ns, 'square', 80, 80);
+  _buildCell(position, namespace) {
+    return _buildRectangleCell(position, namespace, 'square', 80, 80);
   }
 }
 
@@ -747,8 +747,8 @@ class Ellipse extends Node {
     return 'ellipse';
   }
 
-  _buildCell(pos, ns) {
-    return _buildEllipseCell(pos, ns, 'ellipse', 140, 50);
+  _buildCell(position, namespace) {
+    return _buildEllipseCell(position, namespace, 'ellipse', 140, 50);
   }
 }
 
@@ -761,8 +761,8 @@ class Circle extends Node {
     return 'circle';
   }
 
-  _buildCell(pos, ns) {
-    return _buildEllipseCell(pos, ns, 'circle', 80, 80);
+  _buildCell(position, namespace) {
+    return _buildEllipseCell(position, namespace, 'circle', 80, 80);
   }
 }
 
@@ -775,8 +775,8 @@ class Diamond extends Node {
     return 'diamond';
   }
 
-  _buildCell(pos, ns) {
-    return _buildPolygonCell(pos, ns, 'diamond', 80, 80, [[0,10],[10,0],[20,10],[10,20]]);
+  _buildCell(position, namespace) {
+    return _buildPolygonCell(position, namespace, 'diamond', 80, 80, [[0,10],[10,0],[20,10],[10,20]]);
   }
 }
 
@@ -789,8 +789,8 @@ class Triangle extends Node {
     return 'triangle';
   }
 
-  _buildCell(pos, ns) {
-    return _buildPolygonCell(pos, ns, 'triangle', 140, 50, [[10,0],[20,20],[0,20]]);
+  _buildCell(position, namespace) {
+    return _buildPolygonCell(position, namespace, 'triangle', 140, 50, [[10,0],[20,20],[0,20]]);
   }
 }
 
@@ -803,8 +803,8 @@ class Hexagon extends Node {
     return 'hexagon';
   }
 
-  _buildCell(pos, ns) {
-    return _buildPolygonCell(pos, ns, 'hexagon', 140, 50, [[5,0],[15,0],[20,10],[15,20],[5,20],[0,10]]);
+  _buildCell(position, namespace) {
+    return _buildPolygonCell(position, namespace, 'hexagon', 140, 50, [[5,0],[15,0],[20,10],[15,20],[5,20],[0,10]]);
   }
 }
 
@@ -817,8 +817,8 @@ class Pentagon extends Node {
     return 'pentagon';
   }
 
-  _buildCell(pos, ns) {
-    return _buildPolygonCell(pos, ns, 'pentagon', 140, 50, [[10,0],[20,7],[16,20],[4,20],[0,7]]);
+  _buildCell(position, namespace) {
+    return _buildPolygonCell(position, namespace, 'pentagon', 140, 50, [[10,0],[20,7],[16,20],[4,20],[0,7]]);
   }
 }
 
@@ -831,8 +831,8 @@ class Octagon extends Node {
     return 'octagon';
   }
 
-  _buildCell(pos, ns) {
-    return _buildPolygonCell(pos, ns, 'octagon', 140, 50, [[6,0],[14,0],[20,6],[20,14],[14,20],[6,20],[0,14],[0,6]]);
+  _buildCell(position, namespace) {
+    return _buildPolygonCell(position, namespace, 'octagon', 140, 50, [[6,0],[14,0],[20,6],[20,14],[14,20],[6,20],[0,14],[0,6]]);
   }
 }
 
@@ -840,9 +840,9 @@ class Octagon extends Node {
 // Shared JointJS cell construction helpers
 // ═══════════════════════════════════════════════════════════════
 const SHARED_CELL_MARKUP = [
-  { tagName: 'image',  selector: 'image',            className: 'image' },
-  { tagName: 'text',   selector: 'label',            className: 'label' },
-  { tagName: 'text',   selector: 'descriptionLabel', className: 'descriptionLabel' }
+  { tagName: 'image', selector: 'image',            className: 'image' },
+  { tagName: 'text',  selector: 'label',            className: 'label' },
+  { tagName: 'text',  selector: 'descriptionLabel', className: 'descriptionLabel' }
 ];
 
 const SHARED_CELL_ATTRS = {
@@ -891,30 +891,30 @@ function _attachPortsToCell(cell, polygonPoints) {
   cell.addPorts(ports);
 }
 
-function _buildRectangleCell(position, ns, shapeType, w, h) {
-  const cell = new ns.standard.Rectangle();
+function _buildRectangleCell(position, namespace, shapeType, width, height) {
+  const cell = new namespace.standard.Rectangle();
   cell.markup = [{ tagName: 'rect', selector: 'body', className: 'body' }, ...SHARED_CELL_MARKUP];
-  cell.position(position.x, position.y).resize(w, h);
+  cell.position(position.x, position.y).resize(width, height);
   cell.attr({ body: { fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2, rx: 5, ry: 5 }, ...SHARED_CELL_ATTRS });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
   _attachPortsToCell(cell, []);
   return cell;
 }
 
-function _buildEllipseCell(position, ns, shapeType, w, h) {
-  const cell = new ns.standard.Ellipse();
+function _buildEllipseCell(position, namespace, shapeType, width, height) {
+  const cell = new namespace.standard.Ellipse();
   cell.markup = [{ tagName: 'ellipse', selector: 'body', className: 'body' }, ...SHARED_CELL_MARKUP];
-  cell.position(position.x, position.y).resize(w, h);
+  cell.position(position.x, position.y).resize(width, height);
   cell.attr({ body: { fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2 }, ...SHARED_CELL_ATTRS });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
   _attachPortsToCell(cell, []);
   return cell;
 }
 
-function _buildPolygonCell(position, ns, shapeType, w, h, points) {
-  const cell = new ns.standard.Polygon();
+function _buildPolygonCell(position, namespace, shapeType, width, height, points) {
+  const cell = new namespace.standard.Polygon();
   cell.markup = [{ tagName: 'polygon', selector: 'body', className: 'body' }, ...SHARED_CELL_MARKUP];
-  cell.position(position.x, position.y).resize(w, h);
+  cell.position(position.x, position.y).resize(width, height);
   cell.attr({ body: { refPoints: points.map(p => p.join(',')).join(' '), fill: '#ffffff', stroke: '#adb5bd', strokeWidth: 2 }, ...SHARED_CELL_ATTRS });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
   _attachPortsToCell(cell, points);
@@ -927,18 +927,18 @@ function _buildPolygonCell(position, ns, shapeType, w, h, points) {
 class DiagramEditor extends EventBus {
   constructor(container) {
     super();
-    this.container                 = container;
-    this.gridSize                  = 10;
-    this.clearanceUnits            = 4;
-    this.nodeMap                   = new Map();
-    this.edgeMap                   = new Map();
-    this.selection                 = null;
-    this.autoPortsOn               = true;
-    this.isLoading                 = false;
-    this.touchState                = null;
-    this.pointerDownAt             = null;
+    this.container = container;
+    this.gridSize = 10;
+    this.clearanceUnits = 4;
+    this.nodeMap = new Map();
+    this.edgeMap = new Map();
+    this.selection = null;
+    this.autoPortsOn = true;
+    this.isLoading = false;
+    this.touchState = null;
+    this.pointerDownAt = null;
     this.selectionWasAlreadyActive = false;
-    this.registeredNodeTypes       = {};
+    this.registeredNodeTypes = {};
 
     this._buildLayout();
     this._setupRenderer();
@@ -965,8 +965,8 @@ class DiagramEditor extends EventBus {
   // ── Public: register a node type in the shape library ──
   registerNodeType(label, NodeClass) {
     const item = this.shapeLibrary.appendChild(this._makeElement('div', 'wf-node-template'));
-    item.textContent       = label;
-    item.draggable         = true;
+    item.textContent = label;
+    item.draggable = true;
     item.dataset.nodeTypeLabel = label;
 
     item.addEventListener('click', () => {
@@ -979,37 +979,37 @@ class DiagramEditor extends EventBus {
       }
     });
 
-    item.addEventListener('dragstart', e => e.dataTransfer.setData('customNode', label));
+    item.addEventListener('dragstart', event => event.dataTransfer.setData('customNode', label));
     this.registeredNodeTypes[label] = NodeClass;
   }
 
   // ── Public: add a node to the diagram ──
   addNode(node, canvasX, canvasY) {
-    const ns      = joint.shapes;
-    const area    = this.canvasArea;
+    const namespace = joint.shapes;
+    const area = this.canvasArea;
     const centerX = canvasX ?? area.clientWidth  / 2;
     const centerY = canvasY ?? area.clientHeight / 2;
 
-    const localPoint = this.renderer.clientToLocalPoint({
+    const localPosition = this.renderer.clientToLocalPoint({
       x: centerX + area.getBoundingClientRect().left,
       y: centerY + area.getBoundingClientRect().top
     });
 
     const isSquarish = node instanceof Square || node instanceof Circle || node instanceof Diamond;
-    const w = isSquarish ? 80 : 140;
-    const h = isSquarish ? 80 : 50;
+    const width = isSquarish ? 80 : 140;
+    const height = isSquarish ? 80 : 50;
 
-    const openPos = this._findOpenPosition(localPoint.x - w / 2, localPoint.y - h / 2, w, h);
-    const cell    = node._buildCell(openPos, ns);
+    const openPosition = this._findOpenPosition(localPosition.x - width / 2, localPosition.y - height / 2, width, height);
+    const cell = node._buildCell(openPosition, namespace);
     cell.attr('label/text', node._label);
 
-    node.cell   = cell;
+    node.cell = cell;
     node.editor = this;
 
     const builtIns = ['label','labelColor','labelFontSize','description','descriptionColor','backgroundColor','borderColor','borderWidth','imageUrl','imageWidth','imageHeight','status','priority'];
-    const initOpts = node._initOptions || {};
+    const initOptions = node._initOptions || {};
     builtIns.forEach(key => {
-      const value = initOpts[key] ?? node[`_init_${key}`];
+      const value = initOptions[key] ?? node[`_init_${key}`];
       if (value !== undefined) {
         node[key] = value;
       }
@@ -1027,8 +1027,8 @@ class DiagramEditor extends EventBus {
         node.renderFn(node);
       }
       await this._waitForRender(cell);
-      node.on('change', n => this.emit('node:change', n));
-      node.on('move',   n => this.emit('node:move',   n));
+      node.on('change', changedNode => this.emit('node:change', changedNode));
+      node.on('move', movedNode => this.emit('node:move', movedNode));
       return node;
     })();
 
@@ -1107,7 +1107,7 @@ class DiagramEditor extends EventBus {
     this.autoPortsOn = enabled;
     this.autoPortToggleButton.classList.toggle('active', enabled);
     if (enabled) {
-      this.graph.getElements().forEach(el => this._updateConnectionPorts(el));
+      this.graph.getElements().forEach(element => this._updateConnectionPorts(element));
     }
     return this;
   }
@@ -1117,31 +1117,31 @@ class DiagramEditor extends EventBus {
     dagreGraph.setGraph({ rankdir: 'TB', ranksep: 60, nodesep: 40, marginx: 40, marginy: 40 });
     dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-    this.graph.getElements().forEach(el => {
-      const { width, height } = el.size();
-      dagreGraph.setNode(el.id, { width, height });
+    this.graph.getElements().forEach(element => {
+      const { width, height } = element.size();
+      dagreGraph.setNode(element.id, { width, height });
     });
 
     this.graph.getLinks().forEach(link => {
-      const src = link.getSourceElement();
-      const tgt = link.getTargetElement();
-      if (src && tgt) {
-        dagreGraph.setEdge(src.id, tgt.id);
+      const source = link.getSourceElement();
+      const target = link.getTargetElement();
+      if (source && target) {
+        dagreGraph.setEdge(source.id, target.id);
       }
     });
 
     dagre.layout(dagreGraph);
 
-    this.graph.getElements().forEach(el => {
-      const n = dagreGraph.node(el.id);
-      if (!n) {
+    this.graph.getElements().forEach(element => {
+      const layoutNode = dagreGraph.node(element.id);
+      if (!layoutNode) {
         return;
       }
-      el.position(Math.round(n.x - n.width / 2), Math.round(n.y - n.height / 2));
+      element.position(Math.round(layoutNode.x - layoutNode.width / 2), Math.round(layoutNode.y - layoutNode.height / 2));
     });
 
     if (this.autoPortsOn) {
-      this.graph.getElements().forEach(el => this._updateConnectionPorts(el));
+      this.graph.getElements().forEach(element => this._updateConnectionPorts(element));
     }
     this.centerContent();
     return this;
@@ -1176,7 +1176,7 @@ class DiagramEditor extends EventBus {
         if (!portId) {
           return null;
         }
-        const index = node.cell.getPorts().findIndex(p => p.id === portId);
+        const index = node.cell.getPorts().findIndex(port => port.id === portId);
         return index >= 0 ? index + 1 : null;
       };
       return {
@@ -1219,7 +1219,7 @@ class DiagramEditor extends EventBus {
     };
 
     this.autoPortsOn = false;
-    this.isLoading   = true;
+    this.isLoading = true;
 
     const oldIdToNode = {};
 
@@ -1233,13 +1233,13 @@ class DiagramEditor extends EventBus {
       const node = new NodeClass({ ...nodeData.props, ...nodeData.customProps });
       const cell = node._buildCell({ x: nodeData.x, y: nodeData.y }, joint.shapes);
       cell.attr('label/text', node._label);
-      node.cell   = cell;
+      node.cell = cell;
       node.editor = this;
 
       const builtIns = ['label','labelColor','labelFontSize','description','descriptionColor','backgroundColor','borderColor','borderWidth','imageUrl','imageWidth','imageHeight','status','priority'];
-      const initOpts = node._initOptions || {};
+      const initOptions = node._initOptions || {};
       builtIns.forEach(key => {
-        const value = initOpts[key] ?? node[`_init_${key}`];
+        const value = initOptions[key] ?? node[`_init_${key}`];
         if (value !== undefined) {
           node[key] = value;
         }
@@ -1258,8 +1258,8 @@ class DiagramEditor extends EventBus {
         node.renderFn(node);
       }
 
-      node.on('change', n => this.emit('node:change', n));
-      node.on('move',   n => this.emit('node:move',   n));
+      node.on('change', changedNode => this.emit('node:change', changedNode));
+      node.on('move', movedNode => this.emit('node:move', movedNode));
 
       oldIdToNode[nodeData.id] = node;
     }
@@ -1285,11 +1285,11 @@ class DiagramEditor extends EventBus {
       if (edgeData.labelFontSize) {
         edge.labelFontSize = edgeData.labelFontSize;
       }
-      edge.lineColor     = edgeData.lineColor;
-      edge.lineWidth     = edgeData.lineWidth;
-      edge.lineStyle     = edgeData.lineStyle;
-      edge.sourceArrow   = edgeData.sourceArrow;
-      edge.targetArrow   = edgeData.targetArrow;
+      edge.lineColor = edgeData.lineColor;
+      edge.lineWidth = edgeData.lineWidth;
+      edge.lineStyle = edgeData.lineStyle;
+      edge.sourceArrow = edgeData.sourceArrow;
+      edge.targetArrow = edgeData.targetArrow;
       edge.connectorType = edgeData.connectorType;
       if (edgeData.description) {
         edge.description = edgeData.description;
@@ -1340,8 +1340,8 @@ class DiagramEditor extends EventBus {
       || !this.leftSidebar.classList.contains('wf-collapsed')
       || !this.rightSidebar.classList.contains('wf-collapsed');
     const display = shouldHide ? 'none' : '';
-    this.topRightButtons.style.display   = display;
-    this.topLeftButtons.style.display    = display;
+    this.topRightButtons.style.display = display;
+    this.topLeftButtons.style.display = display;
     this.bottomLeftButtons.style.display = display;
   }
 
@@ -1349,7 +1349,7 @@ class DiagramEditor extends EventBus {
   // Internal: build the full DOM layout
   // ══════════════════════════════════════════════════════════════
   _buildLayout() {
-    this.container.innerHTML  = '';
+    this.container.innerHTML = '';
     this.container.style.cssText = 'display:flex;height:100%;overflow:hidden;';
 
     // Left sidebar — shape library
@@ -1357,36 +1357,36 @@ class DiagramEditor extends EventBus {
     const leftHeader = this.leftSidebar.appendChild(this._makeElement('div', 'wf-sidebar-header'));
     leftHeader.innerHTML = `<span class="wf-sidebar-title">Library</span><button class="wf-collapse-btn" title="Toggle Library"><svg class="wf-collapse-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button><span class="wf-collapsed-label" style="display:none">Library</span>`;
     this.leftCollapseButton = leftHeader.querySelector('.wf-collapse-btn');
-    this.leftCollapseIcon   = leftHeader.querySelector('.wf-collapse-icon');
+    this.leftCollapseIcon = leftHeader.querySelector('.wf-collapse-icon');
     this.shapeLibrary = this.leftSidebar.appendChild(this._makeElement('div', 'wf-library wf-sidebar-body'));
     this._buildShapeLibrary();
 
     // Canvas area
-    this.canvasArea   = this.container.appendChild(this._makeElement('div', 'wf-canvas-container'));
+    this.canvasArea = this.container.appendChild(this._makeElement('div', 'wf-canvas-container'));
     this.paperElement = this.canvasArea.appendChild(this._makeElement('div', 'wf-paper'));
 
     // Top-right buttons (export / import)
     this.topRightButtons = this.canvasArea.appendChild(this._makeElement('div'));
     this.topRightButtons.style.cssText = 'position:absolute;top:20px;right:20px;z-index:100;display:flex;gap:8px;';
     this.exportButton = this.topRightButtons.appendChild(this._makeElement('button', 'wf-ctrl-btn'));
-    this.exportButton.title     = 'Export';
+    this.exportButton.title = 'Export';
     this.exportButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
     this.importButton = this.topRightButtons.appendChild(this._makeElement('button', 'wf-ctrl-btn'));
-    this.importButton.title     = 'Import';
+    this.importButton.title = 'Import';
     this.importButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
     this.importFileInput = this.canvasArea.appendChild(this._makeElement('input'));
-    this.importFileInput.type           = 'file';
-    this.importFileInput.accept         = '.json';
-    this.importFileInput.style.display  = 'none';
+    this.importFileInput.type = 'file';
+    this.importFileInput.accept = '.json';
+    this.importFileInput.style.display = 'none';
 
     // Top-left buttons (auto-port toggle / auto-arrange)
     this.topLeftButtons = this.canvasArea.appendChild(this._makeElement('div'));
     this.topLeftButtons.style.cssText = 'position:absolute;top:20px;left:20px;z-index:100;display:flex;gap:8px;';
     this.autoPortToggleButton = this.topLeftButtons.appendChild(this._makeElement('button', 'wf-ctrl-btn active'));
-    this.autoPortToggleButton.title     = 'Toggle Auto Port Switching';
+    this.autoPortToggleButton.title = 'Toggle Auto Port Switching';
     this.autoPortToggleButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m3 10H5M16 12H8M7 7l-4 4 4 4M17 9l4 4-4 4"/></svg>`;
     this.autoArrangeButton = this.topLeftButtons.appendChild(this._makeElement('button', 'wf-ctrl-btn'));
-    this.autoArrangeButton.title     = 'Auto Arrange';
+    this.autoArrangeButton.title = 'Auto Arrange';
     this.autoArrangeButton.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="4" rx="1"/><rect x="3" y="10" width="7" height="4" rx="1"/><rect x="3" y="17" width="7" height="4" rx="1"/><rect x="14" y="5" width="7" height="4" rx="1"/><rect x="14" y="15" width="7" height="4" rx="1"/><line x1="10" y1="5" x2="14" y2="7"/><line x1="10" y1="12" x2="14" y2="7"/><line x1="10" y1="12" x2="14" y2="17"/><line x1="10" y1="19" x2="14" y2="17"/></svg>`;
 
     // Bottom-left buttons (zoom)
@@ -1397,7 +1397,7 @@ class DiagramEditor extends EventBus {
     this.zoomInButton    = this._makeZoomButton(zoomGroup, 'Zoom In',    '+');
     this.zoomOutButton   = this._makeZoomButton(zoomGroup, 'Zoom Out',   '−');
     if (this._isMobile()) {
-      this.zoomInButton.style.display  = 'none';
+      this.zoomInButton.style.display = 'none';
       this.zoomOutButton.style.display = 'none';
     }
     this.centerButton = this._makeZoomButton(zoomGroup, 'Center', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`);
@@ -1420,13 +1420,13 @@ class DiagramEditor extends EventBus {
         <button class="wf-header-btn" data-action="duplicate" title="Duplicate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="wf-header-btn danger" data-action="delete" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
       </div>`;
-    this.rightCollapseButton     = rightHeader.querySelector('.wf-collapse-btn');
-    this.rightCollapseIcon       = rightHeader.querySelector('.wf-collapse-icon');
+    this.rightCollapseButton = rightHeader.querySelector('.wf-collapse-btn');
+    this.rightCollapseIcon = rightHeader.querySelector('.wf-collapse-icon');
     this.propertiesHeaderActions = rightHeader.querySelector('.wf-header-actions');
 
     this.nodePropertiesPanel = this._buildNodePropertiesPanel();
     this.edgePropertiesPanel = this._buildEdgePropertiesPanel();
-    this.noSelectionMessage  = this.rightSidebar.appendChild(this._makeElement('div', 'wf-no-selection wf-sidebar-body'));
+    this.noSelectionMessage = this.rightSidebar.appendChild(this._makeElement('div', 'wf-no-selection wf-sidebar-body'));
     this.noSelectionMessage.textContent = 'Select an item to view properties';
     this._showPropertiesPanel('none');
   }
@@ -1446,10 +1446,10 @@ class DiagramEditor extends EventBus {
 
     builtInShapes.forEach(({ label, type, cls }) => {
       const item = this.shapeLibrary.appendChild(this._makeElement('div', 'wf-node-template'));
-      item.textContent  = label;
-      item.draggable    = true;
+      item.textContent = label;
+      item.draggable = true;
       item.dataset.type = type;
-      item.addEventListener('dragstart', e => e.dataTransfer.setData('type', type));
+      item.addEventListener('dragstart', event => event.dataTransfer.setData('type', type));
       item.addEventListener('click', () => {
         if (!this._isMobile()) {
           return;
@@ -1498,7 +1498,7 @@ class DiagramEditor extends EventBus {
   // Internal: JointJS renderer setup
   // ══════════════════════════════════════════════════════════════
   _setupRenderer() {
-    this.graph    = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
+    this.graph = new joint.dia.Graph({}, { cellNamespace: joint.shapes });
     this.renderer = new joint.dia.Paper({
       el: this.paperElement,
       model: this.graph,
@@ -1517,8 +1517,8 @@ class DiagramEditor extends EventBus {
       defaultLink: () => new joint.shapes.standard.Link({
         attrs: { line: { stroke: '#495057', strokeWidth: 2, targetMarker: ARROW_MARKERS.classic } }
       }),
-      validateConnection: (srcView, srcMagnet, tgtView, tgtMagnet) => {
-        return srcMagnet && tgtMagnet && srcView !== tgtView;
+      validateConnection: (sourceView, sourceMagnet, targetView, targetMagnet) => {
+        return sourceMagnet && targetMagnet && sourceView !== targetView;
       }
     });
   }
@@ -1530,52 +1530,52 @@ class DiagramEditor extends EventBus {
     this.exportButton.addEventListener('click', () => {
       try {
         const blob = new Blob([this.serialize()], { type: 'application/json' });
-        const url  = URL.createObjectURL(blob);
-        const a    = Object.assign(document.createElement('a'), { href: url, download: 'diagram.json' });
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const url = URL.createObjectURL(blob);
+        const anchor = Object.assign(document.createElement('a'), { href: url, download: 'diagram.json' });
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (err) {
-        alert('Export failed: ' + err.message);
+      } catch (error) {
+        alert('Export failed: ' + error.message);
       }
     });
 
     this.importButton.addEventListener('click', () => this.importFileInput.click());
 
-    this.importFileInput.addEventListener('change', e => {
-      const file = e.target.files[0];
+    this.importFileInput.addEventListener('change', event => {
+      const file = event.target.files[0];
       if (!file) {
         return;
       }
       const reader = new FileReader();
-      reader.onload = ev => this.deserialize(ev.target.result).catch(err => alert('Import failed: ' + err.message));
+      reader.onload = loadEvent => this.deserialize(loadEvent.target.result).catch(error => alert('Import failed: ' + error.message));
       reader.readAsText(file);
-      e.target.value = '';
+      event.target.value = '';
     });
 
-    this.leftCollapseButton.addEventListener('click',   () => this._toggleSidebar(this.leftSidebar));
-    this.rightCollapseButton.addEventListener('click',  () => this._toggleSidebar(this.rightSidebar));
+    this.leftCollapseButton.addEventListener('click', () => this._toggleSidebar(this.leftSidebar));
+    this.rightCollapseButton.addEventListener('click', () => this._toggleSidebar(this.rightSidebar));
     this.autoPortToggleButton.addEventListener('click', () => this.setAutoPortSwitching(!this.autoPortsOn));
-    this.autoArrangeButton.addEventListener('click',    () => this.autoArrange());
-    this.zoomToFitButton.addEventListener('click',      () => this.zoomToFit());
-    this.zoomResetButton.addEventListener('click',      () => this.zoomReset());
-    this.zoomInButton.addEventListener('click',         () => this.zoomIn());
-    this.zoomOutButton.addEventListener('click',        () => this.zoomOut());
-    this.centerButton.addEventListener('click',         () => this.centerContent());
+    this.autoArrangeButton.addEventListener('click', () => this.autoArrange());
+    this.zoomToFitButton.addEventListener('click', () => this.zoomToFit());
+    this.zoomResetButton.addEventListener('click', () => this.zoomReset());
+    this.zoomInButton.addEventListener('click', () => this.zoomIn());
+    this.zoomOutButton.addEventListener('click', () => this.zoomOut());
+    this.centerButton.addEventListener('click', () => this.centerContent());
 
-    this.renderer.el.addEventListener('wheel', e => {
-      e.preventDefault();
-      if (e.ctrlKey) {
-        this._zoomAtPoint(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+    this.renderer.el.addEventListener('wheel', event => {
+      event.preventDefault();
+      if (event.ctrlKey) {
+        this._zoomAtPoint(Math.exp(-event.deltaY * 0.0015), event.clientX, event.clientY);
       } else {
-        const t = this.renderer.translate();
-        this.renderer.translate(t.tx - e.deltaX, t.ty - e.deltaY);
+        const translation = this.renderer.translate();
+        this.renderer.translate(translation.tx - event.deltaX, translation.ty - event.deltaY);
       }
     }, { passive: false });
 
-    this.contextMenu.addEventListener('click', e => {
-      const action = e.target.closest('[data-action]')?.dataset.action;
+    this.contextMenu.addEventListener('click', event => {
+      const action = event.target.closest('[data-action]')?.dataset.action;
       if (action === 'duplicate') {
         this._duplicateSelected();
       }
@@ -1585,14 +1585,14 @@ class DiagramEditor extends EventBus {
       this.contextMenu.style.display = 'none';
     });
 
-    window.addEventListener('click', e => {
-      if (!e.target.closest('.wf-context-menu')) {
+    window.addEventListener('click', event => {
+      if (!event.target.closest('.wf-context-menu')) {
         this.contextMenu.style.display = 'none';
       }
     });
 
-    this.propertiesHeaderActions.addEventListener('click', e => {
-      const action = e.target.closest('[data-action]')?.dataset.action;
+    this.propertiesHeaderActions.addEventListener('click', event => {
+      const action = event.target.closest('[data-action]')?.dataset.action;
       if (!action) {
         return;
       }
@@ -1613,26 +1613,26 @@ class DiagramEditor extends EventBus {
       }
     });
 
-    this.nodePropertiesPanel.addEventListener('input',  e => this._handleNodePropertyChange(e));
-    this.nodePropertiesPanel.addEventListener('change', e => this._handleNodePropertyChange(e));
-    this.edgePropertiesPanel.addEventListener('input',  e => this._handleEdgePropertyChange(e));
-    this.edgePropertiesPanel.addEventListener('change', e => this._handleEdgePropertyChange(e));
+    this.nodePropertiesPanel.addEventListener('input', event => this._handleNodePropertyChange(event));
+    this.nodePropertiesPanel.addEventListener('change', event => this._handleNodePropertyChange(event));
+    this.edgePropertiesPanel.addEventListener('input', event => this._handleEdgePropertyChange(event));
+    this.edgePropertiesPanel.addEventListener('change', event => this._handleEdgePropertyChange(event));
 
-    this.canvasArea.addEventListener('dragover', e => e.preventDefault());
-    this.canvasArea.addEventListener('drop', e => {
-      e.preventDefault();
+    this.canvasArea.addEventListener('dragover', event => event.preventDefault());
+    this.canvasArea.addEventListener('drop', event => {
+      event.preventDefault();
 
-      const customLabel = e.dataTransfer.getData('customNode');
+      const customLabel = event.dataTransfer.getData('customNode');
       if (customLabel && this.registeredNodeTypes?.[customLabel]) {
-        const dropPos  = this.renderer.clientToLocalPoint({ x: e.clientX, y: e.clientY });
         const NodeClass = this.registeredNodeTypes[customLabel];
-        const node     = new NodeClass();
-        const openPos  = this._findOpenPosition(dropPos.x - 70, dropPos.y - 25, 140, 50);
-        const cell     = node._buildCell(openPos, joint.shapes);
+        const dropPosition = this.renderer.clientToLocalPoint({ x: event.clientX, y: event.clientY });
+        const node = new NodeClass();
+        const openPosition = this._findOpenPosition(dropPosition.x - 70, dropPosition.y - 25, 140, 50);
+        const cell = node._buildCell(openPosition, joint.shapes);
         cell.attr('label/text', node._label);
-        node.cell   = cell;
+        node.cell = cell;
         node.editor = this;
-        Object.entries(node.customProps).forEach(([k, v]) => cell.set(`custom_${k}`, v));
+        Object.entries(node.customProps).forEach(([key, value]) => cell.set(`custom_${key}`, value));
         cell.addTo(this.graph);
         this.nodeMap.set(cell.id, node);
         this.clearSelection();
@@ -1643,35 +1643,41 @@ class DiagramEditor extends EventBus {
             node.renderFn(node);
           }
           await this._waitForRender(cell);
-          node.on('change', n => this.emit('node:change', n));
-          node.on('move',   n => this.emit('node:move',   n));
+          node.on('change', changedNode => this.emit('node:change', changedNode));
+          node.on('move', movedNode => this.emit('node:move', movedNode));
           this._selectItem(node);
         })();
         this.emit('node:add', node);
         return;
       }
 
-      const droppedType = e.dataTransfer.getData('type');
+      const droppedType = event.dataTransfer.getData('type');
       const builtInShapes = [
-        { type: 'rect',     cls: Rectangle }, { type: 'square',   cls: Square   }, { type: 'ellipse',  cls: Ellipse  },
-        { type: 'circle',   cls: Circle    }, { type: 'diamond',  cls: Diamond  }, { type: 'triangle', cls: Triangle },
-        { type: 'hexagon',  cls: Hexagon   }, { type: 'pentagon', cls: Pentagon }, { type: 'octagon',  cls: Octagon  }
+        { type: 'rect',     cls: Rectangle },
+        { type: 'square',   cls: Square    },
+        { type: 'ellipse',  cls: Ellipse   },
+        { type: 'circle',   cls: Circle    },
+        { type: 'diamond',  cls: Diamond   },
+        { type: 'triangle', cls: Triangle  },
+        { type: 'hexagon',  cls: Hexagon   },
+        { type: 'pentagon', cls: Pentagon  },
+        { type: 'octagon',  cls: Octagon   },
       ];
-      const match = builtInShapes.find(s => s.type === droppedType);
+      const match = builtInShapes.find(shape => shape.type === droppedType);
       if (!match) {
         return;
       }
 
-      const label   = droppedType.charAt(0).toUpperCase() + droppedType.slice(1);
-      const dropPos = this.renderer.clientToLocalPoint({ x: e.clientX, y: e.clientY });
-      const node    = new match.cls(label.toUpperCase());
+      const label = droppedType.charAt(0).toUpperCase() + droppedType.slice(1);
+      const dropPosition = this.renderer.clientToLocalPoint({ x: event.clientX, y: event.clientY });
+      const node = new match.cls(label.toUpperCase());
       const isSquarish = ['square', 'circle', 'diamond'].includes(droppedType);
-      const w = isSquarish ? 80 : 140;
-      const h = isSquarish ? 80 : 50;
-      const openPos = this._findOpenPosition(dropPos.x - w / 2, dropPos.y - h / 2, w, h);
-      const cell    = node._buildCell(openPos, joint.shapes);
+      const width = isSquarish ? 80 : 140;
+      const height = isSquarish ? 80 : 50;
+      const openPosition = this._findOpenPosition(dropPosition.x - width / 2, dropPosition.y - height / 2, width, height);
+      const cell = node._buildCell(openPosition, joint.shapes);
       cell.attr('label/text', node._label);
-      node.cell   = cell;
+      node.cell = cell;
       node.editor = this;
       cell.addTo(this.graph);
       this.nodeMap.set(cell.id, node);
@@ -1680,8 +1686,8 @@ class DiagramEditor extends EventBus {
         await this._waitForRender(cell);
         await this._resizeNodeAsync(cell);
         await this._waitForRender(cell);
-        node.on('change', n => this.emit('node:change', n));
-        node.on('move',   n => this.emit('node:move',   n));
+        node.on('change', changedNode => this.emit('node:change', changedNode));
+        node.on('move', movedNode => this.emit('node:move', movedNode));
         this._selectItem(node);
       })();
       this.emit('node:add', node);
@@ -1691,31 +1697,31 @@ class DiagramEditor extends EventBus {
       this.nodePropertiesPanel.querySelector('[data-action="image-file"]').click();
     });
 
-    this.nodePropertiesPanel.querySelector('[data-action="image-file"]').addEventListener('change', e => {
-      const file = e.target.files[0];
+    this.nodePropertiesPanel.querySelector('[data-action="image-file"]').addEventListener('change', event => {
+      const file = event.target.files[0];
       if (!file) {
         return;
       }
       const reader = new FileReader();
-      reader.onload = ev => {
-        this.nodePropertiesPanel.querySelector('[data-prop="imageUrl"]').value = ev.target.result;
+      reader.onload = loadEvent => {
+        this.nodePropertiesPanel.querySelector('[data-prop="imageUrl"]').value = loadEvent.target.result;
         if (this.selection instanceof Node) {
-          this.selection.imageUrl = ev.target.result;
+          this.selection.imageUrl = loadEvent.target.result;
         }
       };
       reader.readAsDataURL(file);
     });
   }
 
-  _handleNodePropertyChange(e) {
+  _handleNodePropertyChange(event) {
     if (!(this.selection instanceof Node)) {
       return;
     }
-    const input = e.target.closest('[data-prop]');
+    const input = event.target.closest('[data-prop]');
     if (!input) {
       return;
     }
-    const prop  = input.dataset.prop;
+    const prop = input.dataset.prop;
     const value = input.type === 'number' ? parseFloat(input.value) : input.value;
     if (input.dataset.pair) {
       this.nodePropertiesPanel.querySelector(`[data-prop="${input.dataset.pair}"]`).value = value;
@@ -1729,15 +1735,15 @@ class DiagramEditor extends EventBus {
     }
   }
 
-  _handleEdgePropertyChange(e) {
+  _handleEdgePropertyChange(event) {
     if (!(this.selection instanceof Edge)) {
       return;
     }
-    const input = e.target.closest('[data-prop]');
+    const input = event.target.closest('[data-prop]');
     if (!input) {
       return;
     }
-    const prop  = input.dataset.prop;
+    const prop = input.dataset.prop;
     const value = input.type === 'number' ? parseFloat(input.value) : input.value;
     if (input.dataset.pair) {
       this.edgePropertiesPanel.querySelector(`[data-prop="${input.dataset.pair}"]`).value = value;
@@ -1760,12 +1766,12 @@ class DiagramEditor extends EventBus {
       attributes: { r: 6, fill: '#3498db', stroke: '#fff', 'stroke-width': 2, cursor: 'move' }
     });
 
-    this.renderer.on('element:pointerdown', (view, e) => {
+    this.renderer.on('element:pointerdown', (view, event) => {
       const node = this.nodeMap.get(view.model.id);
       if (!node) {
         return;
       }
-      this.pointerDownAt             = { x: e.clientX, y: e.clientY };
+      this.pointerDownAt = { x: event.clientX, y: event.clientY };
       this.selectionWasAlreadyActive = this.selection === node;
       this._deselectAll();
       if (!this._isMobile()) {
@@ -1774,20 +1780,20 @@ class DiagramEditor extends EventBus {
       this._selectItem(node);
     });
 
-    this.renderer.on('element:pointerup', (view, e) => {
-      const dx = Math.abs(e.clientX - (this.pointerDownAt?.x ?? e.clientX));
-      const dy = Math.abs(e.clientY - (this.pointerDownAt?.y ?? e.clientY));
-      if (dx < 5 && dy < 5 && this.selectionWasAlreadyActive && this.rightSidebar.classList.contains('wf-collapsed')) {
+    this.renderer.on('element:pointerup', (view, event) => {
+      const deltaX = Math.abs(event.clientX - (this.pointerDownAt?.x ?? event.clientX));
+      const deltaY = Math.abs(event.clientY - (this.pointerDownAt?.y ?? event.clientY));
+      if (deltaX < 5 && deltaY < 5 && this.selectionWasAlreadyActive && this.rightSidebar.classList.contains('wf-collapsed')) {
         this._toggleSidebar(this.rightSidebar);
       }
-      this.pointerDownAt             = null;
+      this.pointerDownAt = null;
       this.selectionWasAlreadyActive = false;
       if (!this._isMobile()) {
         const node = this.nodeMap.get(view.model.id);
         if (node) {
-          const bbox    = node.cell.getBBox();
-          const openPos = this._findOpenPosition(bbox.x, bbox.y, bbox.width, bbox.height, node.cell);
-          node.cell.position(openPos.x, openPos.y);
+          const bbox = node.cell.getBBox();
+          const openPosition = this._findOpenPosition(bbox.x, bbox.y, bbox.width, bbox.height, node.cell);
+          node.cell.position(openPosition.x, openPosition.y);
         }
       }
     });
@@ -1808,8 +1814,8 @@ class DiagramEditor extends EventBus {
       ]}));
     });
 
-    this.renderer.on('cell:pointerdown tool:pointerdown', (view, e) => {
-      if (e?.target?.closest?.('.joint-port')) {
+    this.renderer.on('cell:pointerdown tool:pointerdown', (view, event) => {
+      if (event?.target?.closest?.('.joint-port')) {
         this.renderer.el.classList.add('wf-dragging-link');
       }
     });
@@ -1818,41 +1824,41 @@ class DiagramEditor extends EventBus {
       this.renderer.el.classList.remove('wf-dragging-link');
     });
 
-    this.renderer.on('cell:contextmenu', (view, e) => {
-      e.preventDefault();
+    this.renderer.on('cell:contextmenu', (view, event) => {
+      event.preventDefault();
       const rect = this.canvasArea.getBoundingClientRect();
       this.contextMenu.style.display = 'block';
-      this.contextMenu.style.left    = (e.clientX - rect.left) + 'px';
-      this.contextMenu.style.top     = (e.clientY - rect.top)  + 'px';
+      this.contextMenu.style.left = (event.clientX - rect.left) + 'px';
+      this.contextMenu.style.top = (event.clientY - rect.top) + 'px';
       this.contextMenu.querySelector('[data-action="duplicate"]').style.display = this.nodeMap.has(view.model.id) ? 'flex' : 'none';
     });
 
-    this.renderer.on('blank:pointerdown', e => {
+    this.renderer.on('blank:pointerdown', event => {
       this._collapseAllSidebarsOnMobile();
-      const startX          = e.clientX;
-      const startY          = e.clientY;
-      const initTranslation = this.renderer.translate();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const initialTranslation = this.renderer.translate();
       if (this._isMobile()) {
         this._deselectAll();
         return;
       }
-      const onMove = mv => this.renderer.translate(
-        initTranslation.tx + (mv.clientX - startX),
-        initTranslation.ty + (mv.clientY - startY)
+      const onMove = moveEvent => this.renderer.translate(
+        initialTranslation.tx + (moveEvent.clientX - startX),
+        initialTranslation.ty + (moveEvent.clientY - startY)
       );
-      const onUp = up => {
+      const onUp = upEvent => {
         document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup',   onUp);
-        if (Math.abs(up.clientX - startX) < 5 && Math.abs(up.clientY - startY) < 5) {
+        document.removeEventListener('mouseup', onUp);
+        if (Math.abs(upEvent.clientX - startX) < 5 && Math.abs(upEvent.clientY - startY) < 5) {
           this._deselectAll();
         }
       };
       document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup',   onUp);
+      document.addEventListener('mouseup', onUp);
     });
 
     this.renderer.on('link:connect', view => {
-      const link       = view.model;
+      const link = view.model;
       const sourceCell = link.getSourceElement();
       const targetCell = link.getTargetElement();
       if (!sourceCell || !targetCell) {
@@ -1863,14 +1869,14 @@ class DiagramEditor extends EventBus {
       if (!sourceNode || !targetNode || this.edgeMap.has(link.id)) {
         return;
       }
-      const reverseExists = [...this.edgeMap.values()].some(e => e.source === targetNode && e.target === sourceNode);
+      const reverseExists = [...this.edgeMap.values()].some(edge => edge.source === targetNode && edge.target === sourceNode);
       if (reverseExists) {
         link.remove();
         return;
       }
       const edge = new Edge(link, sourceNode, targetNode, this);
       this.edgeMap.set(link.id, edge);
-      edge.on('change', ed => this.emit('edge:change', ed));
+      edge.on('change', changedEdge => this.emit('edge:change', changedEdge));
       this.emit('edge:add', edge);
     });
 
@@ -1904,7 +1910,7 @@ class DiagramEditor extends EventBus {
   // ══════════════════════════════════════════════════════════════
   _attachKeyboardShortcuts() {
     this.clipboard = null;
-    this.canvasArea.tabIndex     = 0;
+    this.canvasArea.tabIndex = 0;
     this.canvasArea.style.outline = 'none';
     this.canvasArea.focus();
 
@@ -1915,18 +1921,18 @@ class DiagramEditor extends EventBus {
       }
     });
 
-    this.canvasArea.addEventListener('keydown', async e => {
-      const tag      = document.activeElement?.tagName;
+    this.canvasArea.addEventListener('keydown', async event => {
+      const tag = document.activeElement?.tagName;
       const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
-      if (e.key === 'F2' || (!isTyping && e.key === 'Enter')) {
+      if (event.key === 'F2' || (!isTyping && event.key === 'Enter')) {
         if (this.selection instanceof Node || this.selection instanceof Edge) {
-          e.preventDefault();
+          event.preventDefault();
           if (this.rightSidebar.classList.contains('wf-collapsed')) {
             this._toggleSidebar(this.rightSidebar);
           }
           await this._waitForRender(this.selection.cell ?? this.selection.link);
-          const panel      = this.selection instanceof Node ? this.nodePropertiesPanel : this.edgePropertiesPanel;
+          const panel = this.selection instanceof Node ? this.nodePropertiesPanel : this.edgePropertiesPanel;
           const labelInput = panel.querySelector('[data-prop="label"]');
           if (labelInput) {
             labelInput.focus();
@@ -1940,54 +1946,54 @@ class DiagramEditor extends EventBus {
         return;
       }
 
-      if (e.key === 'Escape') {
-        e.preventDefault();
+      if (event.key === 'Escape') {
+        event.preventDefault();
         this._deselectAll();
         return;
       }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
         this._deleteSelected();
         return;
       }
-      if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
+      if (event.key === '-' && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
         this.zoomOut();
         return;
       }
-      if ((e.key === '=' || e.key === '+') && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
+      if ((event.key === '=' || event.key === '+') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
         this.zoomIn();
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
         if (this.selection instanceof Node) {
-          e.preventDefault();
+          event.preventDefault();
           this.clipboard = this.selection;
         }
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
         if (this.clipboard) {
-          e.preventDefault();
-          const bbox    = this.clipboard.cell.getBBox();
-          const openPos = this._findOpenPosition(bbox.x + 40, bbox.y + 40, bbox.width, bbox.height);
-          const cloned  = this.clipboard.cell.clone();
-          cloned.position(openPos.x, openPos.y);
-          cloned.addTo(this.graph);
+          event.preventDefault();
+          const bbox = this.clipboard.cell.getBBox();
+          const openPosition = this._findOpenPosition(bbox.x + 40, bbox.y + 40, bbox.width, bbox.height);
+          const clonedCell = this.clipboard.cell.clone();
+          clonedCell.position(openPosition.x, openPosition.y);
+          clonedCell.addTo(this.graph);
           this._deselectAll();
-          const copy  = new this.clipboard.constructor(this.clipboard.label);
-          copy.cell   = cloned;
+          const copy = new this.clipboard.constructor(this.clipboard.label);
+          copy.cell = clonedCell;
           copy.editor = this;
-          this.nodeMap.set(cloned.id, copy);
+          this.nodeMap.set(clonedCell.id, copy);
           (async () => {
-            await this._waitForRender(cloned);
-            await this._resizeNodeAsync(cloned);
-            await this._waitForRender(cloned);
-            copy.on('change', n => this.emit('node:change', n));
-            copy.on('move',   n => this.emit('node:move',   n));
+            await this._waitForRender(clonedCell);
+            await this._resizeNodeAsync(clonedCell);
+            await this._waitForRender(clonedCell);
+            copy.on('change', changedNode => this.emit('node:change', changedNode));
+            copy.on('move', movedNode => this.emit('node:move', movedNode));
             this._selectItem(copy);
           })();
           this.emit('node:add', copy);
@@ -1995,15 +2001,15 @@ class DiagramEditor extends EventBus {
         return;
       }
 
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        const dx = e.key === 'ArrowLeft' ? -this.gridSize : e.key === 'ArrowRight' ? this.gridSize : 0;
-        const dy = e.key === 'ArrowUp'   ? -this.gridSize : e.key === 'ArrowDown'  ? this.gridSize : 0;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault();
+        const deltaX = event.key === 'ArrowLeft' ? -this.gridSize : event.key === 'ArrowRight' ? this.gridSize : 0;
+        const deltaY = event.key === 'ArrowUp'   ? -this.gridSize : event.key === 'ArrowDown'  ? this.gridSize : 0;
         if (this.selection instanceof Node) {
-          this.selection.moveBy(dx, dy);
+          this.selection.moveBy(deltaX, deltaY);
         } else if (!this.selection) {
-          const t = this.renderer.translate();
-          this.renderer.translate(t.tx - dx, t.ty - dy);
+          const translation = this.renderer.translate();
+          this.renderer.translate(translation.tx - deltaX, translation.ty - deltaY);
         }
       }
     });
@@ -2013,73 +2019,75 @@ class DiagramEditor extends EventBus {
   // Internal: touch gesture handling (mobile pan / pinch-zoom)
   // ══════════════════════════════════════════════════════════════
   _attachTouchListeners() {
-    this.renderer.el.addEventListener('touchstart', e => {
+    this.renderer.el.addEventListener('touchstart', event => {
       if (!this._isMobile()) {
         return;
       }
-      if (e.touches.length === 1) {
-        const touch = e.touches[0];
+      if (event.touches.length === 1) {
+        const touch = event.touches[0];
         if (document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.joint-cell')) {
           return;
         }
-        e.stopPropagation();
+        event.stopPropagation();
         this.touchState = {
-          type:            'pan',
-          startX:          touch.clientX,
-          startY:          touch.clientY,
-          initTranslation: this.renderer.translate()
+          type: 'pan',
+          startX: touch.clientX,
+          startY: touch.clientY,
+          initialTranslation: this.renderer.translate()
         };
-      } else if (e.touches.length === 2) {
-        e.stopPropagation();
-        const [t1, t2] = [e.touches[0], e.touches[1]];
+      } else if (event.touches.length === 2) {
+        event.stopPropagation();
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
         this.touchState = {
-          type:            'pinch',
-          initDistance:    this._touchDistance(t1, t2),
-          initMidpoint:    this._touchMidpoint(t1, t2),
-          initScale:       this.renderer.scale().sx,
-          initTranslation: this.renderer.translate()
+          type: 'pinch',
+          initialDistance: this._touchDistance(touch1, touch2),
+          initialMidpoint: this._touchMidpoint(touch1, touch2),
+          initialScale: this.renderer.scale().sx,
+          initialTranslation: this.renderer.translate()
         };
       }
     }, { passive: true });
 
-    this.renderer.el.addEventListener('touchmove', e => {
+    this.renderer.el.addEventListener('touchmove', event => {
       if (!this._isMobile() || !this.touchState) {
         return;
       }
-      e.preventDefault();
+      event.preventDefault();
       const state = this.touchState;
 
-      if (state.type === 'pan' && e.touches.length === 1) {
-        const touch = e.touches[0];
+      if (state.type === 'pan' && event.touches.length === 1) {
+        const touch = event.touches[0];
         this.renderer.translate(
-          state.initTranslation.tx + (touch.clientX - state.startX),
-          state.initTranslation.ty + (touch.clientY - state.startY)
+          state.initialTranslation.tx + (touch.clientX - state.startX),
+          state.initialTranslation.ty + (touch.clientY - state.startY)
         );
-      } else if (state.type === 'pinch' && e.touches.length === 2) {
-        const [t1, t2] = [e.touches[0], e.touches[1]];
-        const newScale  = Math.max(0.1, Math.min(10, state.initScale * this._touchDistance(t1, t2) / state.initDistance));
-        const mid       = this._touchMidpoint(t1, t2);
-        const rect      = this.renderer.el.getBoundingClientRect();
-        const vpX       = mid.x - rect.left;
-        const vpY       = mid.y - rect.top;
-        const originX   = (vpX - state.initTranslation.tx) / state.initScale;
-        const originY   = (vpY - state.initTranslation.ty) / state.initScale;
+      } else if (state.type === 'pinch' && event.touches.length === 2) {
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        const newScale = Math.max(0.1, Math.min(10, state.initialScale * this._touchDistance(touch1, touch2) / state.initialDistance));
+        const midpoint = this._touchMidpoint(touch1, touch2);
+        const rect = this.renderer.el.getBoundingClientRect();
+        const viewportX = midpoint.x - rect.left;
+        const viewportY = midpoint.y - rect.top;
+        const originX = (viewportX - state.initialTranslation.tx) / state.initialScale;
+        const originY = (viewportY - state.initialTranslation.ty) / state.initialScale;
         this.renderer.scale(newScale, newScale);
-        this.renderer.translate(vpX - originX * newScale, vpY - originY * newScale);
+        this.renderer.translate(viewportX - originX * newScale, viewportY - originY * newScale);
       }
     }, { passive: false });
 
-    this.renderer.el.addEventListener('touchend', e => {
+    this.renderer.el.addEventListener('touchend', event => {
       if (!this._isMobile()) {
         return;
       }
-      if (this.touchState?.type === 'pinch' && e.touches.length === 1) {
-        const touch = e.touches[0];
+      if (this.touchState?.type === 'pinch' && event.touches.length === 1) {
+        const touch = event.touches[0];
         this.touchState = {
-          type:            'pan',
-          startX:          touch.clientX,
-          startY:          touch.clientY,
-          initTranslation: this.renderer.translate()
+          type: 'pan',
+          startX: touch.clientX,
+          startY: touch.clientY,
+          initialTranslation: this.renderer.translate()
         };
       } else {
         this.touchState = null;
@@ -2092,9 +2100,9 @@ class DiagramEditor extends EventBus {
   // ══════════════════════════════════════════════════════════════
   _selectItem(item) {
     this.selection = item;
-    const isNode   = item instanceof Node;
-    const model    = isNode ? item.cell : item.link;
-    const view     = this.renderer.findViewByModel(model);
+    const isNode = item instanceof Node;
+    const model = isNode ? item.cell : item.link;
+    const view = this.renderer.findViewByModel(model);
 
     if (view) {
       view.el.classList.add('wf-selected');
@@ -2142,27 +2150,27 @@ class DiagramEditor extends EventBus {
 
   _fillNodeProperties(node) {
     const panel = this.nodePropertiesPanel;
-    const set   = (prop, val) => {
-      const el = panel.querySelector(`[data-prop="${prop}"]`);
-      if (el) {
-        el.value = val ?? '';
+    const setField = (prop, value) => {
+      const element = panel.querySelector(`[data-prop="${prop}"]`);
+      if (element) {
+        element.value = value ?? '';
       }
     };
 
-    set('label',               node.label);
-    set('labelFontSize',       node.labelFontSize);
-    set('description',         node.description);
-    set('imageUrl',            node.imageUrl);
-    set('imageWidth',          node.imageWidth);
-    set('imageHeight',         node.imageHeight);
-    set('backgroundColor',     node.backgroundColor);
-    set('backgroundColorHex',  node.backgroundColor);
-    set('borderColor',         node.borderColor);
-    set('borderColorHex',      node.borderColor);
-    set('labelColor',          node.labelColor);
-    set('labelColorHex',       node.labelColor);
-    set('descriptionColor',    node.descriptionColor);
-    set('descriptionColorHex', node.descriptionColor);
+    setField('label',               node.label);
+    setField('labelFontSize',       node.labelFontSize);
+    setField('description',         node.description);
+    setField('imageUrl',            node.imageUrl);
+    setField('imageWidth',          node.imageWidth);
+    setField('imageHeight',         node.imageHeight);
+    setField('backgroundColor',     node.backgroundColor);
+    setField('backgroundColorHex',  node.backgroundColor);
+    setField('borderColor',         node.borderColor);
+    setField('borderColorHex',      node.borderColor);
+    setField('labelColor',          node.labelColor);
+    setField('labelColorHex',       node.labelColor);
+    setField('descriptionColor',    node.descriptionColor);
+    setField('descriptionColorHex', node.descriptionColor);
 
     panel.querySelector('.wf-custom-props')?.remove();
     const schema = node.getSchema?.() ?? {};
@@ -2174,86 +2182,86 @@ class DiagramEditor extends EventBus {
     const divider = customSection.appendChild(this._makeElement('div'));
     divider.style.cssText = 'border-top:1px solid #dee2e6;margin:4px 0;';
 
-    Object.entries(schema).forEach(([key, def]) => {
-      if (def.visible === false) {
+    Object.entries(schema).forEach(([key, fieldDefinition]) => {
+      if (fieldDefinition.visible === false) {
         return;
       }
 
       const group = customSection.appendChild(this._makeElement('div', 'wf-prop-group'));
-      const lbl   = group.appendChild(this._makeElement('label'));
-      lbl.textContent = def.label ?? key;
+      const label = group.appendChild(this._makeElement('label'));
+      label.textContent = fieldDefinition.label ?? key;
 
-      const current = node.getCustomProperty(key);
+      const currentValue = node.getCustomProperty(key);
       let input;
 
-      if (def.type === 'choice') {
+      if (fieldDefinition.type === 'choice') {
         input = this._makeElement('select');
-        Object.entries(def.choices ?? {}).forEach(([val, label]) => {
-          const opt = input.appendChild(this._makeElement('option'));
-          opt.value       = val;
-          opt.textContent = label;
+        Object.entries(fieldDefinition.choices ?? {}).forEach(([value, label]) => {
+          const option = input.appendChild(this._makeElement('option'));
+          option.value = value;
+          option.textContent = label;
         });
-        input.value = current ?? def.default;
+        input.value = currentValue ?? fieldDefinition.default;
 
-      } else if (def.type === 'textarea') {
+      } else if (fieldDefinition.type === 'textarea') {
         input = this._makeElement('textarea');
-        input.value = current ?? '';
+        input.value = currentValue ?? '';
 
-      } else if (def.type === 'boolean') {
+      } else if (fieldDefinition.type === 'boolean') {
         input = this._makeElement('input');
-        input.type    = 'checkbox';
-        input.checked = current ?? def.default ?? false;
+        input.type = 'checkbox';
+        input.checked = currentValue ?? fieldDefinition.default ?? false;
         input.style.cssText = 'width:auto !important;margin:0;cursor:pointer;align-self:flex-start;';
         group.appendChild(input);
 
-      } else if (def.type === 'color') {
-        const row    = group.appendChild(this._makeElement('div', 'wf-color-row'));
+      } else if (fieldDefinition.type === 'color') {
+        const row = group.appendChild(this._makeElement('div', 'wf-color-row'));
         const picker = this._makeElement('input');
-        picker.type  = 'color';
-        picker.value = current ?? def.default ?? '#000000';
-        const hex    = this._makeElement('input');
-        hex.type     = 'text';
-        hex.value    = current ?? def.default ?? '#000000';
+        picker.type = 'color';
+        picker.value = currentValue ?? fieldDefinition.default ?? '#000000';
+        const hexInput = this._makeElement('input');
+        hexInput.type = 'text';
+        hexInput.value = currentValue ?? fieldDefinition.default ?? '#000000';
         picker.addEventListener('input', () => {
-          hex.value = picker.value;
+          hexInput.value = picker.value;
           node.setCustomProperty(key, picker.value);
         });
-        hex.addEventListener('input', () => {
-          picker.value = hex.value;
-          node.setCustomProperty(key, hex.value);
+        hexInput.addEventListener('input', () => {
+          picker.value = hexInput.value;
+          node.setCustomProperty(key, hexInput.value);
         });
         row.appendChild(picker);
-        row.appendChild(hex);
+        row.appendChild(hexInput);
         group.appendChild(row);
         return;
 
       } else {
         input = this._makeElement('input');
-        input.type  = def.type === 'number' ? 'number' : 'text';
-        input.value = current ?? '';
-        if (def.min !== undefined) {
-          input.min = def.min;
+        input.type = fieldDefinition.type === 'number' ? 'number' : 'text';
+        input.value = currentValue ?? '';
+        if (fieldDefinition.min !== undefined) {
+          input.min = fieldDefinition.min;
         }
-        if (def.max !== undefined) {
-          input.max = def.max;
+        if (fieldDefinition.max !== undefined) {
+          input.max = fieldDefinition.max;
         }
       }
 
-      if (def.readonly) {
+      if (fieldDefinition.readonly) {
         input.disabled = true;
       }
       group.appendChild(input);
 
-      input.addEventListener(def.type === 'boolean' ? 'change' : 'input', () => {
-        let newVal;
-        if (def.type === 'boolean') {
-          newVal = input.checked;
-        } else if (def.type === 'number') {
-          newVal = parseFloat(input.value);
+      input.addEventListener(fieldDefinition.type === 'boolean' ? 'change' : 'input', () => {
+        let newValue;
+        if (fieldDefinition.type === 'boolean') {
+          newValue = input.checked;
+        } else if (fieldDefinition.type === 'number') {
+          newValue = parseFloat(input.value);
         } else {
-          newVal = input.value;
+          newValue = input.value;
         }
-        node.setCustomProperty(key, newVal);
+        node.setCustomProperty(key, newValue);
       });
     });
 
@@ -2262,52 +2270,52 @@ class DiagramEditor extends EventBus {
 
   _fillEdgeProperties(edge) {
     const panel = this.edgePropertiesPanel;
-    const set   = (prop, val) => {
-      const el = panel.querySelector(`[data-prop="${prop}"]`);
-      if (el) {
-        el.value = val ?? '';
+    const setField = (prop, value) => {
+      const element = panel.querySelector(`[data-prop="${prop}"]`);
+      if (element) {
+        element.value = value ?? '';
       }
     };
 
-    set('label',         edge.label);
-    set('labelFontSize', edge.labelFontSize);
-    set('labelColor',    edge.labelColor);
-    set('labelColorHex', edge.labelColor);
-    set('lineColor',     edge.lineColor);
-    set('lineColorHex',  edge.lineColor);
-    set('lineStyle',     edge.lineStyle);
-    set('connectorType', edge.connectorType);
-    set('sourceArrow',   edge.sourceArrow);
-    set('targetArrow',   edge.targetArrow);
-    set('description',   edge.description);
+    setField('label',         edge.label);
+    setField('labelFontSize', edge.labelFontSize);
+    setField('labelColor',    edge.labelColor);
+    setField('labelColorHex', edge.labelColor);
+    setField('lineColor',     edge.lineColor);
+    setField('lineColorHex',  edge.lineColor);
+    setField('lineStyle',     edge.lineStyle);
+    setField('connectorType', edge.connectorType);
+    setField('sourceArrow',   edge.sourceArrow);
+    setField('targetArrow',   edge.targetArrow);
+    setField('description',   edge.description);
   }
 
   // ══════════════════════════════════════════════════════════════
   // Internal: sidebar collapse / expand
   // ══════════════════════════════════════════════════════════════
   _toggleSidebar(sidebar) {
-    const isLeft          = sidebar === this.leftSidebar;
-    const icon            = isLeft ? this.leftCollapseIcon : this.rightCollapseIcon;
-    const prevTranslation = this.renderer.translate();
-    const isNowCollapsed  = sidebar.classList.toggle('wf-collapsed');
+    const isLeft = sidebar === this.leftSidebar;
+    const icon = isLeft ? this.leftCollapseIcon : this.rightCollapseIcon;
+    const previousTranslation = this.renderer.translate();
+    const isNowCollapsed = sidebar.classList.toggle('wf-collapsed');
 
     icon.style.transform = isNowCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
     sidebar.querySelector('.wf-collapsed-label').style.display = isNowCollapsed ? 'block' : 'none';
 
     if (this._isMobile() && !isNowCollapsed) {
-      const other     = isLeft ? this.rightSidebar : this.leftSidebar;
+      const otherSidebar = isLeft ? this.rightSidebar : this.leftSidebar;
       const otherIcon = isLeft ? this.rightCollapseIcon : this.leftCollapseIcon;
-      if (!other.classList.contains('wf-collapsed')) {
-        other.classList.add('wf-collapsed');
+      if (!otherSidebar.classList.contains('wf-collapsed')) {
+        otherSidebar.classList.add('wf-collapsed');
         otherIcon.style.transform = 'rotate(180deg)';
-        other.querySelector('.wf-collapsed-label').style.display = 'block';
+        otherSidebar.querySelector('.wf-collapsed-label').style.display = 'block';
       }
     }
 
     const interval = setInterval(() => {
       const area = this.canvasArea;
       this.renderer.setDimensions(area.clientWidth, area.clientHeight);
-      this.renderer.translate(prevTranslation.tx, prevTranslation.ty);
+      this.renderer.translate(previousTranslation.tx, previousTranslation.ty);
     }, 16);
     setTimeout(() => clearInterval(interval), 350);
     this._updateMobileButtonVisibility();
@@ -2315,7 +2323,7 @@ class DiagramEditor extends EventBus {
 
   _setSidebarCollapsed(sidebar, collapsed) {
     const isLeft = sidebar === this.leftSidebar;
-    const icon   = isLeft ? this.leftCollapseIcon : this.rightCollapseIcon;
+    const icon = isLeft ? this.leftCollapseIcon : this.rightCollapseIcon;
     sidebar.classList.toggle('wf-collapsed', collapsed);
     icon.style.transform = collapsed ? 'rotate(180deg)' : 'rotate(0deg)';
     sidebar.querySelector('.wf-collapsed-label').style.display = collapsed ? 'block' : 'none';
@@ -2325,13 +2333,13 @@ class DiagramEditor extends EventBus {
     if (!this._isMobile()) {
       return;
     }
-    const prevTranslation = this.renderer.translate();
-    this._setSidebarCollapsed(this.leftSidebar,  true);
+    const previousTranslation = this.renderer.translate();
+    this._setSidebarCollapsed(this.leftSidebar, true);
     this._setSidebarCollapsed(this.rightSidebar, true);
     const interval = setInterval(() => {
       const area = this.canvasArea;
       this.renderer.setDimensions(area.clientWidth, area.clientHeight);
-      this.renderer.translate(prevTranslation.tx, prevTranslation.ty);
+      this.renderer.translate(previousTranslation.tx, previousTranslation.ty);
     }, 16);
     setTimeout(() => clearInterval(interval), 350);
     this._updateMobileButtonVisibility();
@@ -2344,15 +2352,15 @@ class DiagramEditor extends EventBus {
     if (!(this.selection instanceof Node)) {
       return;
     }
-    const bbox    = this.selection.cell.getBBox();
-    const openPos = this._findOpenPosition(bbox.x + 40, bbox.y + 40, bbox.width, bbox.height);
-    const cloned  = this.selection.cell.clone();
-    cloned.translate(openPos.x - bbox.x, openPos.y - bbox.y);
-    cloned.addTo(this.graph);
-    const copy  = new this.selection.constructor(this.selection.label);
-    copy.cell   = cloned;
+    const bbox = this.selection.cell.getBBox();
+    const openPosition = this._findOpenPosition(bbox.x + 40, bbox.y + 40, bbox.width, bbox.height);
+    const clonedCell = this.selection.cell.clone();
+    clonedCell.translate(openPosition.x - bbox.x, openPosition.y - bbox.y);
+    clonedCell.addTo(this.graph);
+    const copy = new this.selection.constructor(this.selection.label);
+    copy.cell = clonedCell;
     copy.editor = this;
-    this.nodeMap.set(cloned.id, copy);
+    this.nodeMap.set(clonedCell.id, copy);
     this._selectItem(copy);
     this.emit('node:add', copy);
   }
@@ -2370,9 +2378,9 @@ class DiagramEditor extends EventBus {
     if (!this.selection) {
       return;
     }
-    const model  = this.selection instanceof Node ? this.selection.cell : this.selection.link;
+    const model = this.selection instanceof Node ? this.selection.cell : this.selection.link;
     const center = model.getBBox().center();
-    const size   = this.renderer.getComputedSize();
+    const size = this.renderer.getComputedSize();
     this.renderer.scale(1, 1);
     this.renderer.translate(size.width / 2 - center.x, size.height / 2 - center.y);
   }
@@ -2382,7 +2390,7 @@ class DiagramEditor extends EventBus {
   // ══════════════════════════════════════════════════════════════
   _createEdge(sourceNode, targetNode, sourcePortIndex, targetPortIndex) {
     const reverseExists = [...this.edgeMap.values()].some(
-      e => e.source === targetNode && e.target === sourceNode
+      edge => edge.source === targetNode && edge.target === sourceNode
     );
     if (reverseExists) {
       return null;
@@ -2394,11 +2402,11 @@ class DiagramEditor extends EventBus {
 
     const sourcePorts = sourceNode.cell.getPorts();
     const targetPorts = targetNode.cell.getPorts();
-    const srcPort     = sourcePortIndex !== null ? sourcePorts[sourcePortIndex - 1] : null;
-    const tgtPort     = targetPortIndex !== null ? targetPorts[targetPortIndex - 1] : null;
+    const sourcePort = sourcePortIndex !== null ? sourcePorts[sourcePortIndex - 1] : null;
+    const targetPort = targetPortIndex !== null ? targetPorts[targetPortIndex - 1] : null;
 
-    link.source(srcPort ? { id: sourceNode.cell.id, port: srcPort.id } : { id: sourceNode.cell.id });
-    link.target(tgtPort ? { id: targetNode.cell.id, port: tgtPort.id } : { id: targetNode.cell.id });
+    link.source(sourcePort ? { id: sourceNode.cell.id, port: sourcePort.id } : { id: sourceNode.cell.id });
+    link.target(targetPort ? { id: targetNode.cell.id, port: targetPort.id } : { id: targetNode.cell.id });
 
     if (sourcePortIndex !== null) {
       link.set('sourcePort', sourcePortIndex);
@@ -2414,13 +2422,13 @@ class DiagramEditor extends EventBus {
 
     const edge = new Edge(link, sourceNode, targetNode, this);
     this.edgeMap.set(link.id, edge);
-    edge.on('change', e => this.emit('edge:change', e));
+    edge.on('change', changedEdge => this.emit('edge:change', changedEdge));
     this.emit('edge:add', edge);
     return edge;
   }
 
   _getEdgesForNode(node) {
-    return [...this.edgeMap.values()].filter(e => e.source === node || e.target === node);
+    return [...this.edgeMap.values()].filter(edge => edge.source === node || edge.target === node);
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -2439,54 +2447,55 @@ class DiagramEditor extends EventBus {
         return;
       }
 
-      const srcCell = link.getSourceElement();
-      const tgtCell = link.getTargetElement();
-      if (!srcCell || !tgtCell) {
+      const sourceCell = link.getSourceElement();
+      const targetCell = link.getTargetElement();
+      if (!sourceCell || !targetCell) {
         return;
       }
 
-      const getCenter = el => {
-        const pos  = el.position();
-        const size = el.size();
-        return { x: pos.x + size.width / 2, y: pos.y + size.height / 2 };
+      const getCenterOf = element => {
+        const position = element.position();
+        const size = element.size();
+        return { x: position.x + size.width / 2, y: position.y + size.height / 2 };
       };
 
-      const getBestPort = (el, towardPoint) => {
-        const center        = getCenter(el);
-        const angleToward   = Math.atan2(towardPoint.y - center.y, towardPoint.x - center.x);
-        const portPositions = el.getPortsPositions('all');
-        const size          = el.size();
-        let bestId = null, bestAngleDiff = Infinity;
+      const getBestPortFacing = (element, towardPoint) => {
+        const center = getCenterOf(element);
+        const angleToward = Math.atan2(towardPoint.y - center.y, towardPoint.x - center.x);
+        const portPositions = element.getPortsPositions('all');
+        const size = element.size();
+        let bestPortId = null;
+        let bestAngleDiff = Infinity;
 
-        el.getPorts().forEach(port => {
-          const pos = portPositions[port.id];
-          if (!pos) {
+        element.getPorts().forEach(port => {
+          const position = portPositions[port.id];
+          if (!position) {
             return;
           }
-          const portAngle = Math.atan2(pos.y - size.height / 2, pos.x - size.width / 2);
-          let diff = Math.abs(angleToward - portAngle);
-          if (diff > Math.PI) {
-            diff = 2 * Math.PI - diff;
+          const portAngle = Math.atan2(position.y - size.height / 2, position.x - size.width / 2);
+          let angleDiff = Math.abs(angleToward - portAngle);
+          if (angleDiff > Math.PI) {
+            angleDiff = 2 * Math.PI - angleDiff;
           }
-          if (diff < bestAngleDiff) {
-            bestAngleDiff = diff;
-            bestId        = port.id;
+          if (angleDiff < bestAngleDiff) {
+            bestAngleDiff = angleDiff;
+            bestPortId = port.id;
           }
         });
-        return bestId;
+        return bestPortId;
       };
 
-      const srcCenter   = getCenter(srcCell);
-      const tgtCenter   = getCenter(tgtCell);
-      const bestSrcPort = getBestPort(srcCell, tgtCenter);
-      const bestTgtPort = getBestPort(tgtCell, srcCenter);
+      const sourceCenter = getCenterOf(sourceCell);
+      const targetCenter = getCenterOf(targetCell);
+      const bestSourcePort = getBestPortFacing(sourceCell, targetCenter);
+      const bestTargetPort = getBestPortFacing(targetCell, sourceCenter);
 
-      if (link.source().port !== bestSrcPort) {
-        link.source({ id: srcCell.id, port: bestSrcPort });
+      if (link.source().port !== bestSourcePort) {
+        link.source({ id: sourceCell.id, port: bestSourcePort });
         link.unset('sourcePort');
       }
-      if (link.target().port !== bestTgtPort) {
-        link.target({ id: tgtCell.id, port: bestTgtPort });
+      if (link.target().port !== bestTargetPort) {
+        link.target({ id: targetCell.id, port: bestTargetPort });
         link.unset('targetPort');
       }
     });
@@ -2518,53 +2527,53 @@ class DiagramEditor extends EventBus {
       return;
     }
 
-    const labelEl = view.el.querySelector('.label');
-    const descEl  = view.el.querySelector('.descriptionLabel');
-    if (!labelEl || !descEl) {
+    const labelElement = view.el.querySelector('.label');
+    const descriptionElement = view.el.querySelector('.descriptionLabel');
+    if (!labelElement || !descriptionElement) {
       return;
     }
 
     const fontScale = (cell.get('fontSizePercent') || 100) / 100;
     cell.attr({ label: { fontSize: 13 * fontScale }, descriptionLabel: { fontSize: 11 * fontScale } });
 
-    const imageUrl   = cell.get('imageUrl');
-    const shapeType  = cell.get('type');
-    const descText   = cell.attr('descriptionLabel/text') || '';
-    const imgW       = parseInt(cell.get('imageWidth')  || 32);
-    const imgH       = parseInt(cell.get('imageHeight') || 32);
-    const padding    = 15;
-    const imgSpacing = imageUrl ? 10 : 0;
+    const imageUrl = cell.get('imageUrl');
+    const shapeType = cell.get('type');
+    const descriptionText = cell.attr('descriptionLabel/text') || '';
+    const imageWidth = parseInt(cell.get('imageWidth') || 32);
+    const imageHeight = parseInt(cell.get('imageHeight') || 32);
+    const padding = 15;
+    const imageSpacing = imageUrl ? 10 : 0;
 
-    const labelBBox  = labelEl.getBBox();
-    const descBBox   = descEl.getBBox();
-    const textW      = Math.max(labelBBox.width, descBBox.width);
-    const totalW     = (imageUrl ? imgW : 0) + imgSpacing + textW;
+    const labelBBox = labelElement.getBBox();
+    const descriptionBBox = descriptionElement.getBBox();
+    const textWidth = Math.max(labelBBox.width, descriptionBBox.width);
+    const totalContentWidth = (imageUrl ? imageWidth : 0) + imageSpacing + textWidth;
 
-    let w = Math.max(140, padding + totalW + padding);
-    const totalTextH = descText ? labelBBox.height + descBBox.height : labelBBox.height;
-    let h = Math.max(50, padding + Math.max(imageUrl ? imgH : 0, totalTextH) + padding);
+    let width = Math.max(140, padding + totalContentWidth + padding);
+    const totalTextHeight = descriptionText ? labelBBox.height + descriptionBBox.height : labelBBox.height;
+    let height = Math.max(50, padding + Math.max(imageUrl ? imageHeight : 0, totalTextHeight) + padding);
 
     if (shapeType === 'diamond' || shapeType === 'circle') {
-      w = h = Math.max(w, h);
+      width = height = Math.max(width, height);
     } else if (['triangle', 'hexagon', 'pentagon', 'octagon'].includes(shapeType)) {
-      if (w / h > 1.2) {
-        h = w / 1.2;
+      if (width / height > 1.2) {
+        height = width / 1.2;
       } else {
-        w = h * 1.2;
+        width = height * 1.2;
       }
       if (shapeType === 'triangle') {
-        w *= 1.25;
-        h *= 1.25;
+        width *= 1.25;
+        height *= 1.25;
       }
     }
 
-    const contentStartX = (w - totalW) / 2;
-    const textCenterX   = contentStartX + (imageUrl ? imgW : 0) + imgSpacing + textW / 2;
+    const contentStartX = (width - totalContentWidth) / 2;
+    const textCenterX = contentStartX + (imageUrl ? imageWidth : 0) + imageSpacing + textWidth / 2;
 
-    cell.attr('image', { refX: 0, refX2: contentStartX, refY: 0.5, y: -imgH / 2, width: imgW, height: imgH });
+    cell.attr('image', { refX: 0, refX2: contentStartX, refY: 0.5, y: -imageHeight / 2, width: imageWidth, height: imageHeight });
 
-    if (descText) {
-      const contentStartY = (h - totalTextH) / 2;
+    if (descriptionText) {
+      const contentStartY = (height - totalTextHeight) / 2;
       cell.attr('label', {
         refX: 0, refX2: textCenterX,
         refY: 0, refY2: contentStartY + labelBBox.height / 2,
@@ -2572,7 +2581,7 @@ class DiagramEditor extends EventBus {
       });
       cell.attr('descriptionLabel', {
         refX: 0, refX2: textCenterX,
-        refY: 0, refY2: contentStartY + labelBBox.height + descBBox.height / 2,
+        refY: 0, refY2: contentStartY + labelBBox.height + descriptionBBox.height / 2,
         textAnchor: 'middle', textVerticalAnchor: 'middle'
       });
     } else {
@@ -2583,7 +2592,7 @@ class DiagramEditor extends EventBus {
       });
     }
 
-    cell.resize(w, h);
+    cell.resize(width, height);
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -2594,31 +2603,31 @@ class DiagramEditor extends EventBus {
   }
 
   _makeElement(tag, className = '') {
-    const el = document.createElement(tag);
+    const element = document.createElement(tag);
     if (className) {
-      el.className = className;
+      element.className = className;
     }
-    return el;
+    return element;
   }
 
   _makeZoomButton(parent, title, html) {
-    const btn = parent.appendChild(this._makeElement('button', 'wf-ctrl-btn'));
-    btn.title     = title;
-    btn.innerHTML = html;
-    return btn;
+    const button = parent.appendChild(this._makeElement('button', 'wf-ctrl-btn'));
+    button.title = title;
+    button.innerHTML = html;
+    return button;
   }
 
   _zoomAtPoint(factor, clientX, clientY) {
-    const current     = this.renderer.scale().sx;
-    const newScale    = Math.max(0.1, Math.min(10, current * factor));
-    const rect        = this.renderer.el.getBoundingClientRect();
-    const vpX         = clientX - rect.left;
-    const vpY         = clientY - rect.top;
+    const currentScale = this.renderer.scale().sx;
+    const newScale = Math.max(0.1, Math.min(10, currentScale * factor));
+    const rect = this.renderer.el.getBoundingClientRect();
+    const viewportX = clientX - rect.left;
+    const viewportY = clientY - rect.top;
     const translation = this.renderer.translate();
-    const originX     = (vpX - translation.tx) / current;
-    const originY     = (vpY - translation.ty) / current;
+    const originX = (viewportX - translation.tx) / currentScale;
+    const originY = (viewportY - translation.ty) / currentScale;
     this.renderer.scale(newScale, newScale);
-    this.renderer.translate(vpX - originX * newScale, vpY - originY * newScale);
+    this.renderer.translate(viewportX - originX * newScale, viewportY - originY * newScale);
   }
 
   _zoomAtCenter(factor) {
@@ -2626,18 +2635,18 @@ class DiagramEditor extends EventBus {
     this._zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
   }
 
-  _findOpenPosition(startX, startY, w, h, excludeCell = null) {
+  _findOpenPosition(startX, startY, width, height, excludeCell = null) {
     const clearance = this.clearanceUnits * this.gridSize;
     let x = Math.round(startX / this.gridSize) * this.gridSize;
     let y = Math.round(startY / this.gridSize) * this.gridSize;
 
     const isBlocked = (testX, testY) => {
-      const testRect = new joint.g.Rect(testX, testY, w, h).inflate(clearance);
-      return this.graph.getElements().some(el => {
-        if (excludeCell && el.id === excludeCell.id) {
+      const testRect = new joint.g.Rect(testX, testY, width, height).inflate(clearance);
+      return this.graph.getElements().some(element => {
+        if (excludeCell && element.id === excludeCell.id) {
           return false;
         }
-        return testRect.intersect(el.getBBox().clone().inflate(clearance));
+        return testRect.intersect(element.getBBox().clone().inflate(clearance));
       });
     };
 
@@ -2646,15 +2655,15 @@ class DiagramEditor extends EventBus {
     }
 
     for (let radius = 1; radius < 30; radius++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        for (let dy = -radius; dy <= radius; dy++) {
-          if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
+      for (let deltaX = -radius; deltaX <= radius; deltaX++) {
+        for (let deltaY = -radius; deltaY <= radius; deltaY++) {
+          if (Math.abs(deltaX) !== radius && Math.abs(deltaY) !== radius) {
             continue;
           }
-          const tx = x + dx * this.gridSize;
-          const ty = y + dy * this.gridSize;
-          if (!isBlocked(tx, ty)) {
-            return { x: tx, y: ty };
+          const testX = x + deltaX * this.gridSize;
+          const testY = y + deltaY * this.gridSize;
+          if (!isBlocked(testX, testY)) {
+            return { x: testX, y: testY };
           }
         }
       }
@@ -2663,16 +2672,16 @@ class DiagramEditor extends EventBus {
     return { x, y };
   }
 
-  _touchDistance(t1, t2) {
-    const dx = t1.clientX - t2.clientX;
-    const dy = t1.clientY - t2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
+  _touchDistance(touch1, touch2) {
+    const deltaX = touch1.clientX - touch2.clientX;
+    const deltaY = touch1.clientY - touch2.clientY;
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
   }
 
-  _touchMidpoint(t1, t2) {
+  _touchMidpoint(touch1, touch2) {
     return {
-      x: (t1.clientX + t2.clientX) / 2,
-      y: (t1.clientY + t2.clientY) / 2
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
     };
   }
 }
