@@ -1654,13 +1654,6 @@ class DiagramEditor extends EventBus {
     });
 
     this.emit('change');
-
-    // re-route all ports now that loading is complete
-    // TODO: not sure we need this
-    // this._graph
-    //   .getElements()
-    //   .forEach((element: any) => this._updateConnectionPorts(element));
-
     return this;
   }
 
@@ -2680,7 +2673,7 @@ class DiagramEditor extends EventBus {
     });
 
     this._renderer.on('link:pointerdown', (view: any) => {
-      this._renderer.el.classList.add('wf-dragging-link'); // add this
+      this._renderer.el.classList.add('wf-dragging-link');
       const edge = this._edgeMap.get(view.model.id);
       if (!edge) {
         return;
@@ -2700,6 +2693,20 @@ class DiagramEditor extends EventBus {
           ],
         }),
       );
+    });
+
+    this._renderer.el.addEventListener('pointerdown', (event: PointerEvent) => {
+      const target = event.target as Element;
+      if (
+        target?.classList?.contains('source-arrowhead') ||
+        target?.classList?.contains('target-arrowhead')
+      ) {
+        this._renderer.el.classList.add('wf-dragging-link');
+      }
+    });
+
+    this._renderer.el.addEventListener('pointerup', () => {
+      this._renderer.el.classList.remove('wf-dragging-link');
     });
 
     this._renderer.on(
@@ -2920,7 +2927,9 @@ class DiagramEditor extends EventBus {
             clonedCell.addTo(this._graph);
             this._deselectAll();
 
-            const copy = new (this._clipboard.constructor as NodeConstructor)({
+            const copy = new (
+              this._clipboard.constructor as NodeConstructor
+            )({
               label: this._clipboard.label,
             });
             copy.cell = clonedCell;
