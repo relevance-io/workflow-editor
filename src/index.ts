@@ -1653,6 +1653,14 @@ class DiagramEditor extends EventBus {
         link.set('targetPort', savedEdge.targetPort);
     });
 
+    // clear auto-routed ports so _updateConnectionPorts can manage them
+    if (this._autoPortsOn) {
+      this._graph.getLinks().forEach((link: any) => {
+        link.unset('sourcePort');
+        link.unset('targetPort');
+      });
+    }
+
     this.emit('change');
     return this;
   }
@@ -1707,7 +1715,10 @@ class DiagramEditor extends EventBus {
     const reverseExists = [...this._edgeMap.values()].some(
       (edge) => edge.source === targetNode && edge.target === sourceNode,
     );
-    if (reverseExists) {
+    const duplicateExists = [...this._edgeMap.values()].some(
+      (edge) => edge.source === sourceNode && edge.target === targetNode,
+    );
+    if (reverseExists || duplicateExists) {
       return null;
     }
 
@@ -2785,7 +2796,10 @@ class DiagramEditor extends EventBus {
       const reverseExists = [...this._edgeMap.values()].some(
         (edge) => edge.source === targetNode && edge.target === sourceNode,
       );
-      if (reverseExists) {
+      const duplicateExists = [...this._edgeMap.values()].some(
+        (edge) => edge.source === sourceNode && edge.target === targetNode,
+      );
+      if (reverseExists || duplicateExists) {
         link.remove();
         return;
       }
