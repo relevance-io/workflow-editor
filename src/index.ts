@@ -1012,36 +1012,23 @@ function _attachPortsToCell(cell: any, polygonPoints: number[][]): void {
           strokeWidth: 2,
           pointerEvents: 'all',
         },
-        touchTarget: {
-          r: 20,
-          fill: 'transparent',
-          stroke: 'none',
-          magnet: false,
-          pointerEvents: 'all',
-        },
         text: { display: 'none' },
       },
     },
   });
 
-  const portMarkup = [
-    { tagName: 'circle', selector: 'touchTarget' },
-    { tagName: 'circle', selector: 'circle' },
-  ];
-
   let ports: any[];
   if (polygonPoints.length === 0) {
     ports = [
-      { markup: portMarkup, group: 'all', args: { x: '50%', y: '0%', dy: -1 } },
-      { markup: portMarkup, group: 'all', args: { x: '100%', y: '50%' } },
-      { markup: portMarkup, group: 'all', args: { x: '50%', y: '100%', dy: 1 } },
-      { markup: portMarkup, group: 'all', args: { x: '0%', y: '50%' } },
+      { group: 'all', args: { x: '50%', y: '0%', dy: -1 } },
+      { group: 'all', args: { x: '100%', y: '50%' } },
+      { group: 'all', args: { x: '50%', y: '100%', dy: 1 } },
+      { group: 'all', args: { x: '0%', y: '50%' } },
     ];
   } else {
     ports = polygonPoints.map((point, i) => {
       const next = polygonPoints[(i + 1) % polygonPoints.length];
       return {
-        markup: portMarkup,
         group: 'all',
         args: {
           x: `${((point[0] + next[0]) / 2 / 20) * 100}%`,
