@@ -12,11 +12,23 @@
   },
   "license": "ISC",
   "author": "",
-  "main": "index.js",
   "type": "module",
+  "main": "./lib/index.cjs.js",
+  "module": "./lib/index.es.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/index.es.js",
+      "require": "./lib/index.cjs.js"
+    },
+    "./style": "./lib/style.css"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "clean": "rm -Rf dist/",
+    "build:app": "vite build",
+    "build:lib": "BUILD_TARGET=lib vite build && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "build": "npm run build:lib && npm run build:app",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,9 +38,10 @@
   "devDependencies": {
     "@types/backbone": "^1.4.15",
     "@types/dagre": "^0.7.3",
-    "terser": "^5.46.1",
+    "@types/node": "^25.5.0",
+    "terser": "^5.0.0",
     "typescript": "^5.4.0",
-    "vite": "^5.0.0",
-    "vite-plugin-singlefile": "^2.3.2"
+    "vite": "^8.0.3",
+    "vite-plugin-singlefile": "^2.0.0"
   }
 }
