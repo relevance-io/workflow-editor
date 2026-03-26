@@ -1,14 +1,14 @@
 {
-  "name": "workflow-editor",
+  "name": "@relevance/workflow-editor",
   "version": "1.0.0",
   "description": "",
-  "homepage": "https://github.com/flacroix897/workflow-editor#readme",
+  "homepage": "https://github.com/relevance-io/workflow-editor#readme",
   "bugs": {
-    "url": "https://github.com/flacroix897/workflow-editor/issues"
+    "url": "https://github.com/relevance-io/workflow-editor/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/flacroix897/workflow-editor.git"
+    "url": "git+https://github.com/relevance-io/workflow-editor.git"
   },
   "license": "ISC",
   "author": "",
