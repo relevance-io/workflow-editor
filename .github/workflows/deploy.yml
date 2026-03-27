@@ -111,8 +111,8 @@ jobs:
           name: dist
           path: dist
 
-      - name: Copy package.json
-        run: cp package.json dist/
+      - name: Update package.json
+        run: cp -f package.json dist/
 
       - name: Publish to npm
         run: cd dist && npm publish --access public

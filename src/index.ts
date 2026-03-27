@@ -9,10 +9,10 @@ import * as dagre from 'dagre';
 // Shared types
 // =============================================================
 
-type ArrowMarkerName = 'none' | 'classic' | 'block';
-type LineStyle = 'solid' | 'dashed' | 'dotted';
-type ConnectorType = 'curved' | 'straight' | 'elbow';
-type ShapeType =
+export type ArrowMarkerName = 'none' | 'classic' | 'block';
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
+export type ConnectorType = 'curved' | 'straight' | 'elbow';
+export type ShapeType =
   | 'rect'
   | 'square'
   | 'ellipse'
@@ -23,17 +23,17 @@ type ShapeType =
   | 'pentagon'
   | 'octagon';
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
 }
 
-interface ArrowMarker {
+export interface ArrowMarker {
   type: string;
   d: string;
 }
 
-interface FieldDefinition {
+export interface FieldDefinition {
   label?: string;
   type?: 'text' | 'number' | 'textarea' | 'boolean' | 'choice' | 'color';
   default?: any;
@@ -44,9 +44,9 @@ interface FieldDefinition {
   readonly?: boolean;
 }
 
-type Schema = Record<string, FieldDefinition>;
+export type Schema = Record<string, FieldDefinition>;
 
-interface SerializedNode {
+export interface SerializedNode {
   id: string;
   nodeClass: string;
   x: number;
@@ -55,7 +55,7 @@ interface SerializedNode {
   customProps: Record<string, any>;
 }
 
-interface SerializedEdge {
+export interface SerializedEdge {
   sourceId: string;
   targetId: string;
   sourcePort: number | null;
@@ -73,12 +73,12 @@ interface SerializedEdge {
   vertices: Point[];
 }
 
-interface SerializedDiagram {
+export interface SerializedDiagram {
   nodes: SerializedNode[];
   edges: SerializedEdge[];
 }
 
-interface NodeOptions {
+export interface NodeOptions {
   label?: string;
   labelColor?: string;
   labelFontSize?: number;
@@ -95,7 +95,7 @@ interface NodeOptions {
   [key: string]: any;
 }
 
-interface TouchState {
+export interface TouchState {
   type: 'pan' | 'pinch';
   startX?: number;
   startY?: number;
@@ -109,7 +109,7 @@ interface TouchState {
 // EventBus — minimal pub/sub base class
 // =============================================================
 
-class EventBus {
+export class EventBus {
   private listeners: Record<string, Array<(...args: any[]) => void>>;
 
   constructor() {
@@ -142,7 +142,7 @@ class EventBus {
 // PathPoint — a single movable bend point on an edge's path
 // =============================================================
 
-class PathPoint extends EventBus {
+export class PathPoint extends EventBus {
   // private
   private _edge: any;
   private _pointIndex: number;
@@ -198,7 +198,7 @@ const ARROW_MARKERS: Record<ArrowMarkerName, ArrowMarker | null> = {
 // Edge — a connection between two nodes
 // =============================================================
 
-class Edge extends EventBus {
+export class Edge extends EventBus {
   // private
   private _sourceNode: DiagramNode;
   private _targetNode: DiagramNode;
@@ -448,7 +448,7 @@ class Edge extends EventBus {
 // DiagramNode — base class for a diagram shape
 // =============================================================
 
-class DiagramNode extends EventBus {
+export class DiagramNode extends EventBus {
   // internal (used by subclasses / editor — not strictly private due to the Node.define factory pattern)
   public _label: string;
   public _initOptions: NodeOptions;
@@ -732,7 +732,7 @@ class DiagramNode extends EventBus {
 // DiagramNode.define — factory that creates custom node classes
 // =============================================================
 
-type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
+export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 
 (DiagramNode as any).define = function (
   BaseNodeClass: NodeConstructor,
@@ -820,7 +820,7 @@ type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 // Concrete node shape subclasses
 // =============================================================
 
-class RectangleNode extends DiagramNode {
+export class RectangleNode extends DiagramNode {
   public get portCount(): number {
     return 4;
   }
@@ -832,7 +832,7 @@ class RectangleNode extends DiagramNode {
   }
 }
 
-class SquareNode extends DiagramNode {
+export class SquareNode extends DiagramNode {
   public get portCount(): number {
     return 4;
   }
@@ -844,7 +844,7 @@ class SquareNode extends DiagramNode {
   }
 }
 
-class EllipseNode extends DiagramNode {
+export class EllipseNode extends DiagramNode {
   public get portCount(): number {
     return 4;
   }
@@ -856,7 +856,7 @@ class EllipseNode extends DiagramNode {
   }
 }
 
-class CircleNode extends DiagramNode {
+export class CircleNode extends DiagramNode {
   public get portCount(): number {
     return 4;
   }
@@ -868,7 +868,7 @@ class CircleNode extends DiagramNode {
   }
 }
 
-class DiamondNode extends DiagramNode {
+export class DiamondNode extends DiagramNode {
   public get portCount(): number {
     return 4;
   }
@@ -885,7 +885,7 @@ class DiamondNode extends DiagramNode {
   }
 }
 
-class TriangleNode extends DiagramNode {
+export class TriangleNode extends DiagramNode {
   public get portCount(): number {
     return 3;
   }
@@ -901,7 +901,7 @@ class TriangleNode extends DiagramNode {
   }
 }
 
-class HexagonNode extends DiagramNode {
+export class HexagonNode extends DiagramNode {
   public get portCount(): number {
     return 6;
   }
@@ -920,7 +920,7 @@ class HexagonNode extends DiagramNode {
   }
 }
 
-class PentagonNode extends DiagramNode {
+export class PentagonNode extends DiagramNode {
   public get portCount(): number {
     return 5;
   }
@@ -938,7 +938,7 @@ class PentagonNode extends DiagramNode {
   }
 }
 
-class OctagonNode extends DiagramNode {
+export class OctagonNode extends DiagramNode {
   public get portCount(): number {
     return 8;
   }
@@ -1116,7 +1116,7 @@ function _buildPolygonCell(
 // DiagramEditor — the main controller
 // =============================================================
 
-class DiagramEditor extends EventBus {
+export class DiagramEditor extends EventBus {
   // private fields
   private _nodeMap: Map<string, DiagramNode>;
   private _edgeMap: Map<string, Edge>;
@@ -2954,9 +2954,7 @@ class DiagramEditor extends EventBus {
             clonedCell.addTo(this._graph);
             this._deselectAll();
 
-            const copy = new (
-              this._clipboard.constructor as NodeConstructor
-            )({
+            const copy = new (this._clipboard.constructor as NodeConstructor)({
               label: this._clipboard.label,
             });
             copy.cell = clonedCell;
@@ -3642,17 +3640,3 @@ Object.assign(window, {
   PentagonNode,
   OctagonNode,
 });
-
-export {
-  DiagramEditor,
-  DiagramNode,
-  RectangleNode,
-  SquareNode,
-  EllipseNode,
-  CircleNode,
-  DiamondNode,
-  TriangleNode,
-  HexagonNode,
-  PentagonNode,
-  OctagonNode,
-};

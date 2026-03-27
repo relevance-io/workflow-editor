@@ -13,22 +13,22 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "./lib/index.cjs.js",
-  "module": "./lib/index.es.js",
-  "types": "./lib/index.d.ts",
+  "main": "./index.cjs.js",
+  "module": "./index.es.js",
+  "types": "./index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/index.es.js",
-      "require": "./lib/index.cjs.js"
+      "import": "./index.es.js",
+      "require": "./index.cjs.js"
     },
-    "./style": "./lib/style.css"
+    "./style": "./index.css"
   },
   "scripts": {
     "dev": "vite",
     "clean": "rm -Rf dist/",
     "build:app": "vite build",
-    "build:lib": "BUILD_TARGET=lib vite build && tsc --emitDeclarationOnly --declaration --outDir dist",
-    "build": "npm run build:lib && npm run build:app",
+    "build:lib": "BUILD_TARGET=lib vite build && tsc --project tsconfig.lib.json",
+    "build": "npm run build:lib && npm run build:app && cp -f package.json dist/",
     "preview": "vite preview"
   },
   "dependencies": {
