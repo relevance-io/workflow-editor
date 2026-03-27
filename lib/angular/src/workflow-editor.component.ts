@@ -16,7 +16,7 @@ import { DiagramEditor, DiagramNode, Edge } from '@relevance/workflow-editor';
   template: ` <div #container [style.width]="width" [style.height]="height"></div> `,
 })
 export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('container', { static: true })
+  @ViewChild('container', { static: false })
   private containerRef!: ElementRef<HTMLDivElement>;
 
   @Input() width = '100%';

@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { DiagramEditorComponent } from '../workflow-editor';
+import { DiagramEditorComponent } from '@relevance/workflow-editor/angular';
 
 @Component({
   selector: 'app-root',

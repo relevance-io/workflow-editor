@@ -59,6 +59,13 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "prebundle": {
+              "exclude": [
+                "@relevance/workflow-editor"
+              ]
+            }
+          },
           "configurations": {
             "production": {
               "buildTarget": "workflow-editor-angular-demo:build:production"
