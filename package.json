@@ -1,6 +1,6 @@
 {
   "name": "@relevance/workflow-editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "homepage": "https://github.com/relevance-io/workflow-editor#readme",
   "bugs": {
@@ -16,21 +16,37 @@
   "main": "./index.cjs.js",
   "module": "./index.es.js",
   "types": "./index.d.ts",
+  "*": {
+    "angular": [
+      "./angular/index.d.ts"
+    ]
+  },
+  "typesVersions": {
+    "*": {
+      "angular": [
+        "./angular/types/relevance-workflow-editor-angular.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "import": "./index.es.js",
       "require": "./index.cjs.js"
     },
+    "./angular": {
+      "types": "./angular/types/relevance-workflow-editor-angular.d.ts",
+      "default": "./angular/fesm2022/relevance-workflow-editor-angular.mjs"
+    },
     "./style": "./index.css"
   },
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "clean": "rm -Rf dist/",
     "build:app": "vite build",
-    "build:lib": "BUILD_TARGET=lib vite build && tsc --project tsconfig.lib.json && cp -f src/index.css dist/",
-    "build": "npm run build:lib && npm run build:app && cp -f package.json dist/",
-    "preview": "vite preview"
+    "build:lib": "BUILD_TARGET=lib vite build && tsc --project tsconfig.lib.json && cp -f src/index.css dist/ && cp -f package.json dist/",
+    "build:angular": "cd lib/angular/ && npm run build",
+    "build": "npm run build:lib && npm run build:app && npm run build:angular"
   },
   "dependencies": {
     "dagre": "^0.8.5",

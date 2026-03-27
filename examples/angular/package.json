@@ -19,7 +19,7 @@
     "@angular/router": "^21.2.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "@relevance/workflow-editor": "file:../../dist"
+    "@relevance/workflow-editor": "^1.0.1"
   },
   "devDependencies": {
     "@angular/build": "^21.2.5",
