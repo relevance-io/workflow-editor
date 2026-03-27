@@ -4,6 +4,29 @@ import { resolve } from 'path';
 
 const isLib = process.env.BUILD_TARGET === 'lib';
 
+const terserOptions = {
+  keep_classnames: true,
+  keep_fnames: true,
+  mangle: {
+    reserved: [
+      'RectangleNode',
+      'SquareNode',
+      'EllipseNode',
+      'CircleNode',
+      'DiamondNode',
+      'TriangleNode',
+      'HexagonNode',
+      'PentagonNode',
+      'OctagonNode',
+      'DiagramNode',
+      'DiagramEditor',
+      'Edge',
+      'PathPoint',
+      'EventBus',
+    ],
+  },
+};
+
 export default defineConfig(
   isLib
     ? {
@@ -11,6 +34,8 @@ export default defineConfig(
         build: {
           outDir: 'dist/',
           sourcemap: true,
+          minify: 'terser',
+          terserOptions,
           lib: {
             entry: resolve(__dirname, 'src/index.ts'),
             name: 'WorkflowEditor',
@@ -27,28 +52,7 @@ export default defineConfig(
         plugins: [viteSingleFile()],
         build: {
           minify: 'terser',
-          terserOptions: {
-            keep_classnames: true,
-            keep_fnames: true,
-            mangle: {
-              reserved: [
-                'RectangleNode',
-                'SquareNode',
-                'EllipseNode',
-                'CircleNode',
-                'DiamondNode',
-                'TriangleNode',
-                'HexagonNode',
-                'PentagonNode',
-                'OctagonNode',
-                'DiagramNode',
-                'DiagramEditor',
-                'Edge',
-                'PathPoint',
-                'EventBus',
-              ],
-            },
-          },
+          terserOptions,
           outDir: '../dist',
           sourcemap: false,
         },

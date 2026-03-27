@@ -18,6 +18,7 @@
   "types": "./index.d.ts",
   "exports": {
     ".": {
+      "types": "./index.d.ts",
       "import": "./index.es.js",
       "require": "./index.cjs.js"
     },
@@ -27,7 +28,7 @@
     "dev": "vite",
     "clean": "rm -Rf dist/",
     "build:app": "vite build",
-    "build:lib": "BUILD_TARGET=lib vite build && tsc --project tsconfig.lib.json",
+    "build:lib": "BUILD_TARGET=lib vite build && tsc --project tsconfig.lib.json && cp -f src/index.css dist/",
     "build": "npm run build:lib && npm run build:app && cp -f package.json dist/",
     "preview": "vite preview"
   },
