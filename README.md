@@ -20,8 +20,9 @@ npm install @relevance/workflow-editor
 
 ```html
 <link rel="stylesheet" href="https://unpkg.com/@relevance/workflow-editor/index.css" />
+<div id="editor" style="width: 100%; height: 600px;"></div>
 <script type="module">
-    const { DiagramEditor, RectangleNode } = await import("https://unpkg.com/@relevance/workflow-editor/index.es.js");
+    import { DiagramEditor, RectangleNode } from "https://unpkg.com/@relevance/workflow-editor/index.es.js";
 
     const editor = new DiagramEditor(document.getElementById("editor"));
     const node = new RectangleNode({ label: "Hello World" });
@@ -37,7 +38,7 @@ npm install @relevance/workflow-editor
 
 ```typescript
 import { DiagramEditor, RectangleNode, DiamondNode } from "@relevance/workflow-editor";
-import "@relevance/workflow-editor/style";
+import "@relevance/workflow-editor/index.css";
 
 const editor = new DiagramEditor(document.getElementById("editor")!);
 
@@ -125,101 +126,89 @@ In `src/styles.scss`:
 
 ### DiagramEditor
 
-| Method                               | Description                           |
-| ------------------------------------ | ------------------------------------- |
-| `addNode(node, x?, y?)`              | Add a node to the canvas              |
-| `removeNode(node)`                   | Remove a node                         |
-| `getNodes()`                         | Get all nodes                         |
-| `getEdges()`                         | Get all edges                         |
-| `serialize()`                        | Serialize diagram to JSON string      |
-| `deserialize(json)`                  | Restore diagram from JSON string      |
-| `registerNodeType(label, NodeClass)` | Register a custom node type           |
-| `autoArrange()`                      | Auto-arrange nodes using Dagre layout |
-| `zoomToFit()`                        | Zoom to fit all content               |
-| `zoomIn(factor?)`                    | Zoom in                               |
-| `zoomOut(factor?)`                   | Zoom out                              |
-| `centerContent()`                    | Center the canvas                     |
-| `clearSelection()`                   | Clear current selection               |
-| `getSelectedItem()`                  | Get selected node or edge             |
-| `setAutoPortSwitching(enabled)`      | Toggle automatic port switching       |
+| Name                                                          | Type                          | Description                           |
+| ------------------------------------------------------------- | ----------------------------- | ------------------------------------- |
+| `addNode(node: DiagramNode, x?: number, y?: number)`          | `Promise<DiagramNode>`        | Add a node to the canvas              |
+| `removeNode(node: DiagramNode)`                               | `void`                        | Remove a node                         |
+| `getNodes()`                                                  | `DiagramNode[]`               | Get all nodes                         |
+| `getEdges()`                                                  | `Edge[]`                      | Get all edges                         |
+| `serialize()`                                                 | `string`                      | Serialize diagram to JSON string      |
+| `deserialize(json: string)`                                   | `Promise<DiagramEditor>`      | Restore diagram from JSON string      |
+| `registerNodeType(label: string, NodeClass: NodeConstructor)` | `void`                        | Register a custom node type           |
+| `autoArrange()`                                               | `DiagramEditor`               | Auto-arrange nodes using Dagre layout |
+| `zoomToFit()`                                                 | `DiagramEditor`               | Zoom to fit all content               |
+| `zoomIn(factor?: number)`                                     | `DiagramEditor`               | Zoom in                               |
+| `zoomOut(factor?: number)`                                    | `DiagramEditor`               | Zoom out                              |
+| `centerContent()`                                             | `DiagramEditor`               | Center the canvas                     |
+| `clearSelection()`                                            | `DiagramEditor`               | Clear current selection               |
+| `getSelectedItem()`                                           | `DiagramNode \| Edge \| null` | Get selected node or edge             |
+| `setAutoPortSwitching(enabled: boolean)`                      | `DiagramEditor`               | Toggle automatic port switching       |
+| `panTo(x: number, y: number)`                                 | `DiagramEditor`               | Pan canvas to position                |
+| `getZoomLevel()`                                              | `number`                      | Get current zoom level                |
 
 ### Nodes
 
 All node classes extend `DiagramNode` and share the following properties and methods:
 
-#### Properties
-
-| Property           | Type             | Description                     |
-| ------------------ | ---------------- | ------------------------------- |
-| `id`               | `string \| null` | Unique identifier               |
-| `x`                | `number`         | X position on canvas            |
-| `y`                | `number`         | Y position on canvas            |
-| `width`            | `number`         | Width of the node               |
-| `height`           | `number`         | Height of the node              |
-| `label`            | `string`         | Display label                   |
-| `labelColor`       | `string`         | Label text color                |
-| `labelFontSize`    | `number`         | Label font size (%)             |
-| `description`      | `string`         | Secondary text below label      |
-| `descriptionColor` | `string`         | Description text color          |
-| `backgroundColor`  | `string`         | Fill color                      |
-| `borderColor`      | `string`         | Border color                    |
-| `borderWidth`      | `number`         | Border width in pixels          |
-| `imageUrl`         | `string`         | URL of an icon/image to display |
-| `imageWidth`       | `number`         | Image width in pixels           |
-| `imageHeight`      | `number`         | Image height in pixels          |
-| `status`           | `string`         | Arbitrary status string         |
-| `priority`         | `number`         | Arbitrary priority number       |
-
-#### Methods
-
-| Method                                          | Description                             |
-| ----------------------------------------------- | --------------------------------------- |
-| `moveTo(x, y)`                                  | Move node to absolute position          |
-| `moveBy(dx, dy)`                                | Move node by relative offset            |
-| `toFront()`                                     | Bring node to front                     |
-| `toBack()`                                      | Send node to back                       |
-| `select()`                                      | Select this node                        |
-| `deselect()`                                    | Deselect this node                      |
-| `remove()`                                      | Remove node from canvas                 |
-| `connect(targetNode, sourcePort?, targetPort?)` | Connect to another node                 |
-| `getEdges()`                                    | Get all edges connected to this node    |
-| `getIncomingEdges()`                            | Get edges where this node is the target |
-| `getOutgoingEdges()`                            | Get edges where this node is the source |
-| `getCustomProperty(key)`                        | Get a custom property value             |
-| `setCustomProperty(key, value)`                 | Set a custom property value             |
-| `getSchema()`                                   | Get the custom properties schema        |
+| Name                                                                     | Type             | Description                             |
+| ------------------------------------------------------------------------ | ---------------- | --------------------------------------- |
+| `id`                                                                     | `string \| null` | Unique identifier                       |
+| `x`                                                                      | `number`         | X position on canvas                    |
+| `y`                                                                      | `number`         | Y position on canvas                    |
+| `width`                                                                  | `number`         | Width of the node                       |
+| `height`                                                                 | `number`         | Height of the node                      |
+| `label`                                                                  | `string`         | Display label                           |
+| `labelColor`                                                             | `string`         | Label text color                        |
+| `labelFontSize`                                                          | `number`         | Label font size (%)                     |
+| `description`                                                            | `string`         | Secondary text below label              |
+| `descriptionColor`                                                       | `string`         | Description text color                  |
+| `backgroundColor`                                                        | `string`         | Fill color                              |
+| `borderColor`                                                            | `string`         | Border color                            |
+| `borderWidth`                                                            | `number`         | Border width in pixels                  |
+| `imageUrl`                                                               | `string`         | URL of an icon/image to display         |
+| `imageWidth`                                                             | `number`         | Image width in pixels                   |
+| `imageHeight`                                                            | `number`         | Image height in pixels                  |
+| `status`                                                                 | `string`         | Arbitrary status string                 |
+| `priority`                                                               | `number`         | Arbitrary priority number               |
+| `moveTo(x: number, y: number)`                                           | `DiagramNode`    | Move node to absolute position          |
+| `moveBy(dx: number, dy: number)`                                         | `DiagramNode`    | Move node by relative offset            |
+| `toFront()`                                                              | `DiagramNode`    | Bring node to front                     |
+| `toBack()`                                                               | `DiagramNode`    | Send node to back                       |
+| `select()`                                                               | `DiagramNode`    | Select this node                        |
+| `deselect()`                                                             | `DiagramNode`    | Deselect this node                      |
+| `remove()`                                                               | `void`           | Remove node from canvas                 |
+| `connect(target: DiagramNode, sourcePort?: number, targetPort?: number)` | `Edge \| null`   | Connect to another node                 |
+| `getEdges()`                                                             | `Edge[]`         | Get all edges connected to this node    |
+| `getIncomingEdges()`                                                     | `Edge[]`         | Get edges where this node is the target |
+| `getOutgoingEdges()`                                                     | `Edge[]`         | Get edges where this node is the source |
+| `getCustomProperty(key: string)`                                         | `any`            | Get a custom property value             |
+| `setCustomProperty(key: string, value: any)`                             | `void`           | Set a custom property value             |
+| `getSchema()`                                                            | `Schema`         | Get the custom properties schema        |
 
 ### Edges
 
-#### Properties
-
-| Property        | Type                                | Description              |
-| --------------- | ----------------------------------- | ------------------------ |
-| `id`            | `string`                            | Unique identifier        |
-| `source`        | `DiagramNode`                       | Source node              |
-| `target`        | `DiagramNode`                       | Target node              |
-| `label`         | `string`                            | Edge label               |
-| `labelColor`    | `string`                            | Label text color         |
-| `labelFontSize` | `number`                            | Label font size (%)      |
-| `lineColor`     | `string`                            | Line color               |
-| `lineWidth`     | `number`                            | Line width in pixels     |
-| `lineStyle`     | `'solid' \| 'dashed' \| 'dotted'`   | Line style               |
-| `sourceArrow`   | `'none' \| 'classic' \| 'block'`    | Arrow at source end      |
-| `targetArrow`   | `'none' \| 'classic' \| 'block'`    | Arrow at target end      |
-| `connectorType` | `'elbow' \| 'straight' \| 'curved'` | Routing style            |
-| `description`   | `string`                            | Edge description         |
-| `sourcePort`    | `number \| null`                    | Pinned source port index |
-| `targetPort`    | `number \| null`                    | Pinned target port index |
-
-#### Methods
-
-| Method               | Description                       |
-| -------------------- | --------------------------------- |
-| `select()`           | Select this edge                  |
-| `deselect()`         | Deselect this edge                |
-| `remove()`           | Remove edge from canvas           |
-| `addPathPoint(x, y)` | Add a bend point to the edge path |
-| `getPathPoints()`    | Get all bend points               |
+| Name                                 | Type                                | Description                       |
+| ------------------------------------ | ----------------------------------- | --------------------------------- |
+| `id`                                 | `string`                            | Unique identifier                 |
+| `source`                             | `DiagramNode`                       | Source node                       |
+| `target`                             | `DiagramNode`                       | Target node                       |
+| `label`                              | `string`                            | Edge label                        |
+| `labelColor`                         | `string`                            | Label text color                  |
+| `labelFontSize`                      | `number`                            | Label font size (%)               |
+| `lineColor`                          | `string`                            | Line color                        |
+| `lineWidth`                          | `number`                            | Line width in pixels              |
+| `lineStyle`                          | `'solid' \| 'dashed' \| 'dotted'`   | Line style                        |
+| `sourceArrow`                        | `'none' \| 'classic' \| 'block'`    | Arrow at source end               |
+| `targetArrow`                        | `'none' \| 'classic' \| 'block'`    | Arrow at target end               |
+| `connectorType`                      | `'elbow' \| 'straight' \| 'curved'` | Routing style                     |
+| `description`                        | `string`                            | Edge description                  |
+| `sourcePort`                         | `number \| null`                    | Pinned source port index          |
+| `targetPort`                         | `number \| null`                    | Pinned target port index          |
+| `select()`                           | `Edge`                              | Select this edge                  |
+| `deselect()`                         | `Edge`                              | Deselect this edge                |
+| `remove()`                           | `void`                              | Remove edge from canvas           |
+| `addPathPoint(x: number, y: number)` | `PathPoint`                         | Add a bend point to the edge path |
+| `getPathPoints()`                    | `PathPoint[]`                       | Get all bend points               |
 
 ### Events
 
