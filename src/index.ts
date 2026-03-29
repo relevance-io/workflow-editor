@@ -106,6 +106,21 @@ export interface TouchState {
 }
 
 // =============================================================
+// UnknownNodeTypeError
+// =============================================================
+
+export class UnknownNodeTypeError extends Error {
+  public readonly nodeClass: string;
+
+  constructor(nodeClass: string) {
+    super(`Unknown node type: "${nodeClass}". Make sure it has been registered before deserializing.`);
+    this.name = 'UnknownNodeTypeError';
+    this.nodeClass = nodeClass;
+    Object.setPrototypeOf(this, UnknownNodeTypeError.prototype);
+  }
+}
+
+// =============================================================
 // EventBus — minimal pub/sub base class
 // =============================================================
 
@@ -716,7 +731,7 @@ export class DiagramNode extends EventBus {
     this.emit('remove', this);
   }
 
-  public _buildCell(position: Point, jointNamespace: any): any {
+  public _buildCell(position: Point, jointNamespace: any, portRadius: number = 6): any {
     throw new Error('_buildCell must be implemented by subclass');
   }
 
@@ -829,8 +844,8 @@ export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 export class RectangleNode extends DiagramNode {
   public get portCount(): number { return 4; }
   public _getShapeType(): ShapeType { return 'rect'; }
-  public _buildCell(position: Point, namespace: any): any {
-    const cell = _buildRectangleCell(position, namespace, 'rect', 140, 50);
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
+    const cell = _buildRectangleCell(position, namespace, 'rect', 140, 50, portRadius);
     cell.set('nodeClass', 'RectangleNode');
     return cell;
   }
@@ -839,8 +854,8 @@ export class RectangleNode extends DiagramNode {
 export class SquareNode extends DiagramNode {
   public get portCount(): number { return 4; }
   public _getShapeType(): ShapeType { return 'square'; }
-  public _buildCell(position: Point, namespace: any): any {
-    const cell = _buildRectangleCell(position, namespace, 'square', 80, 80);
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
+    const cell = _buildRectangleCell(position, namespace, 'square', 80, 80, portRadius);
     cell.set('nodeClass', 'SquareNode');
     return cell;
   }
@@ -849,8 +864,8 @@ export class SquareNode extends DiagramNode {
 export class EllipseNode extends DiagramNode {
   public get portCount(): number { return 4; }
   public _getShapeType(): ShapeType { return 'ellipse'; }
-  public _buildCell(position: Point, namespace: any): any {
-    const cell = _buildEllipseCell(position, namespace, 'ellipse', 140, 50);
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
+    const cell = _buildEllipseCell(position, namespace, 'ellipse', 140, 50, portRadius);
     cell.set('nodeClass', 'EllipseNode');
     return cell;
   }
@@ -859,8 +874,8 @@ export class EllipseNode extends DiagramNode {
 export class CircleNode extends DiagramNode {
   public get portCount(): number { return 4; }
   public _getShapeType(): ShapeType { return 'circle'; }
-  public _buildCell(position: Point, namespace: any): any {
-    const cell = _buildEllipseCell(position, namespace, 'circle', 80, 80);
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
+    const cell = _buildEllipseCell(position, namespace, 'circle', 80, 80, portRadius);
     cell.set('nodeClass', 'CircleNode');
     return cell;
   }
@@ -869,10 +884,10 @@ export class CircleNode extends DiagramNode {
 export class DiamondNode extends DiagramNode {
   public get portCount(): number { return 4; }
   public _getShapeType(): ShapeType { return 'diamond'; }
-  public _buildCell(position: Point, namespace: any): any {
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
     const cell = _buildPolygonCell(position, namespace, 'diamond', 80, 80, [
       [0, 10], [10, 0], [20, 10], [10, 20],
-    ]);
+    ], portRadius);
     cell.set('nodeClass', 'DiamondNode');
     return cell;
   }
@@ -881,10 +896,10 @@ export class DiamondNode extends DiagramNode {
 export class TriangleNode extends DiagramNode {
   public get portCount(): number { return 3; }
   public _getShapeType(): ShapeType { return 'triangle'; }
-  public _buildCell(position: Point, namespace: any): any {
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
     const cell = _buildPolygonCell(position, namespace, 'triangle', 140, 50, [
       [10, 0], [20, 20], [0, 20],
-    ]);
+    ], portRadius);
     cell.set('nodeClass', 'TriangleNode');
     return cell;
   }
@@ -893,10 +908,10 @@ export class TriangleNode extends DiagramNode {
 export class HexagonNode extends DiagramNode {
   public get portCount(): number { return 6; }
   public _getShapeType(): ShapeType { return 'hexagon'; }
-  public _buildCell(position: Point, namespace: any): any {
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
     const cell = _buildPolygonCell(position, namespace, 'hexagon', 140, 50, [
       [5, 0], [15, 0], [20, 10], [15, 20], [5, 20], [0, 10],
-    ]);
+    ], portRadius);
     cell.set('nodeClass', 'HexagonNode');
     return cell;
   }
@@ -905,10 +920,10 @@ export class HexagonNode extends DiagramNode {
 export class PentagonNode extends DiagramNode {
   public get portCount(): number { return 5; }
   public _getShapeType(): ShapeType { return 'pentagon'; }
-  public _buildCell(position: Point, namespace: any): any {
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
     const cell = _buildPolygonCell(position, namespace, 'pentagon', 140, 50, [
       [10, 0], [20, 7], [16, 20], [4, 20], [0, 7],
-    ]);
+    ], portRadius);
     cell.set('nodeClass', 'PentagonNode');
     return cell;
   }
@@ -917,10 +932,10 @@ export class PentagonNode extends DiagramNode {
 export class OctagonNode extends DiagramNode {
   public get portCount(): number { return 8; }
   public _getShapeType(): ShapeType { return 'octagon'; }
-  public _buildCell(position: Point, namespace: any): any {
+  public _buildCell(position: Point, namespace: any, portRadius: number = 6): any {
     const cell = _buildPolygonCell(position, namespace, 'octagon', 140, 50, [
       [6, 0], [14, 0], [20, 6], [20, 14], [14, 20], [6, 20], [0, 14], [0, 6],
-    ]);
+    ], portRadius);
     cell.set('nodeClass', 'OctagonNode');
     return cell;
   }
@@ -966,13 +981,13 @@ const SHARED_CELL_DEFAULTS = {
   fontSizePercent: 100,
 };
 
-function _attachPortsToCell(cell: any, polygonPoints: number[][]): void {
+function _attachPortsToCell(cell: any, polygonPoints: number[][], portRadius: number): void {
   cell.prop('ports/groups', {
     all: {
       position: 'absolute',
       attrs: {
         circle: {
-          r: 6,
+          r: portRadius,
           fill: '#3498db',
           magnet: true,
           stroke: '#fff',
@@ -1013,6 +1028,7 @@ function _buildRectangleCell(
   shapeType: string,
   width: number,
   height: number,
+  portRadius: number,
 ): any {
   const cell = new namespace.standard.Rectangle();
   cell.markup = [
@@ -1025,7 +1041,7 @@ function _buildRectangleCell(
     ...SHARED_CELL_ATTRS,
   });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, []);
+  _attachPortsToCell(cell, [], portRadius);
   return cell;
 }
 
@@ -1035,6 +1051,7 @@ function _buildEllipseCell(
   shapeType: string,
   width: number,
   height: number,
+  portRadius: number,
 ): any {
   const cell = new namespace.standard.Ellipse();
   cell.markup = [
@@ -1047,7 +1064,7 @@ function _buildEllipseCell(
     ...SHARED_CELL_ATTRS,
   });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, []);
+  _attachPortsToCell(cell, [], portRadius);
   return cell;
 }
 
@@ -1058,6 +1075,7 @@ function _buildPolygonCell(
   width: number,
   height: number,
   points: number[][],
+  portRadius: number,
 ): any {
   const cell = new namespace.standard.Polygon();
   cell.markup = [
@@ -1075,7 +1093,7 @@ function _buildPolygonCell(
     ...SHARED_CELL_ATTRS,
   });
   cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, points);
+  _attachPortsToCell(cell, points, portRadius);
   return cell;
 }
 
@@ -1207,6 +1225,18 @@ export class DiagramEditor extends EventBus {
     this._registeredNodeTypes[label] = NodeClass;
   }
 
+  public registerBuiltInNodes(): void {
+    this.registerNodeType('Rectangle', RectangleNode);
+    this.registerNodeType('Square', SquareNode);
+    this.registerNodeType('Ellipse', EllipseNode);
+    this.registerNodeType('Circle', CircleNode);
+    this.registerNodeType('Diamond', DiamondNode);
+    this.registerNodeType('Triangle', TriangleNode);
+    this.registerNodeType('Hexagon', HexagonNode);
+    this.registerNodeType('Pentagon', PentagonNode);
+    this.registerNodeType('Octagon', OctagonNode);
+  }
+
   public addNode(
     node: DiagramNode,
     canvasX?: number,
@@ -1242,10 +1272,10 @@ export class DiagramEditor extends EventBus {
       (node as any)._nodeClass = (node.constructor as any).nodeClass;
     }
 
-    const cell = node._buildCell(openPosition, namespace);
+    const portRadius = this._isMobile() ? 14 : 6;
+    const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
-    // If this is a registered custom type, overwrite the nodeClass on the cell
-    // with the registration label so serialize() reads the right value.
+    // Registration label always wins over whatever _buildCell stamped.
     const customLabel = (node.constructor as any).__nodeLabel;
     if (customLabel) cell.set('nodeClass', customLabel);
     node.cell = cell;
@@ -1422,8 +1452,6 @@ export class DiagramEditor extends EventBus {
   public serialize(): string {
     const nodes: SerializedNode[] = [...this._nodeMap.values()].map((node) => ({
       id: node.cell.id,
-      // FIX: use the stable static nodeClass string, not constructor.name
-      // (which is mangled to e.g. 'CT' by Angular's minifier).
       nodeClass: node.cell.get('nodeClass') ?? (node as any)._nodeClass,
       x: node.x,
       y: node.y,
@@ -1487,20 +1515,7 @@ export class DiagramEditor extends EventBus {
     this._edgeMap.clear();
     this._graph.clear();
 
-    // FIX: key the map by the stable static nodeClass string (not cls.name,
-    // which is minified). For registered custom types, use the registration
-    // label as the fallback key — it's a plain runtime string, immune to
-    // minification, and matches what serialize() wrote.
     const nodeClassMap: Record<string, NodeConstructor> = {
-      'RectangleNode': RectangleNode,
-      'SquareNode': SquareNode,
-      'EllipseNode': EllipseNode,
-      'CircleNode': CircleNode,
-      'DiamondNode': DiamondNode,
-      'TriangleNode': TriangleNode,
-      'HexagonNode': HexagonNode,
-      'PentagonNode': PentagonNode,
-      'OctagonNode': OctagonNode,
       ...Object.fromEntries(
         Object.entries(this._registeredNodeTypes).map(([label, cls]) => [label, cls]),
       ),
@@ -1515,17 +1530,18 @@ export class DiagramEditor extends EventBus {
     for (const nodeData of nodeDataList) {
       const NodeClass = nodeClassMap[nodeData.nodeClass];
       if (!NodeClass) {
-        console.warn(`Unknown node class: ${nodeData.nodeClass}`);
-        continue;
+        throw new UnknownNodeTypeError(nodeData.nodeClass);
       }
 
       const node = new NodeClass({
         ...nodeData.props,
         ...nodeData.customProps,
       });
+      const portRadius = this._isMobile() ? 14 : 6;
       const cell = node._buildCell(
         { x: nodeData.x, y: nodeData.y },
         joint.shapes,
+        portRadius,
       );
       cell.attr('label/text', node._label);
       cell.set('nodeClass', nodeData.nodeClass);
@@ -1637,7 +1653,6 @@ export class DiagramEditor extends EventBus {
         link.set('targetPort', savedEdge.targetPort);
     });
 
-    // clear auto-routed ports so _updateConnectionPorts can manage them
     if (this._autoPortsOn) {
       this._graph.getLinks().forEach((link: any) => {
         link.unset('sourcePort');
@@ -1899,7 +1914,7 @@ export class DiagramEditor extends EventBus {
     this._shapeLibrary = this._leftSidebar.appendChild(
       this._makeElement('div', 'wf-library wf-sidebar-body'),
     );
-    this._buildShapeLibrary();
+    // Sidebar starts empty — populate via registerNodeType() or registerBuiltInNodes()
 
     this._canvasArea = this.container.appendChild(
       this._makeElement('div', 'wf-canvas-container'),
@@ -2035,46 +2050,6 @@ export class DiagramEditor extends EventBus {
     this._noSelectionMessage.textContent = 'Select an item to view properties';
 
     this._showPropertiesPanel('none');
-  }
-
-  private _buildShapeLibrary(): void {
-    const builtInShapes: {
-      label: string;
-      type: ShapeType;
-      cls: NodeConstructor;
-    }[] = [
-      { label: 'Rectangle', type: 'rect', cls: RectangleNode },
-      { label: 'Square', type: 'square', cls: SquareNode },
-      { label: 'Ellipse', type: 'ellipse', cls: EllipseNode },
-      { label: 'Circle', type: 'circle', cls: CircleNode },
-      { label: 'Diamond', type: 'diamond', cls: DiamondNode },
-      { label: 'Triangle', type: 'triangle', cls: TriangleNode },
-      { label: 'Hexagon', type: 'hexagon', cls: HexagonNode },
-      { label: 'Pentagon', type: 'pentagon', cls: PentagonNode },
-      { label: 'Octagon', type: 'octagon', cls: OctagonNode },
-    ];
-
-    builtInShapes.forEach(({ label, type, cls }) => {
-      const item = this._shapeLibrary.appendChild(
-        this._makeElement('div', 'wf-node-template'),
-      ) as HTMLElement;
-      item.textContent = label;
-      item.draggable = true;
-      item.dataset.type = type;
-
-      item.addEventListener('dragstart', (event) =>
-        (event as DragEvent).dataTransfer!.setData('type', type),
-      );
-      item.addEventListener('click', () => {
-        if (!this._isMobile()) {
-          return;
-        }
-        this.addNode(new cls({ label: label.toUpperCase() }));
-        if (!this._leftSidebar.classList.contains('wf-collapsed')) {
-          this._toggleSidebar(this._leftSidebar);
-        }
-      });
-    });
   }
 
   private _buildNodePropertiesPanel(): HTMLElement {
@@ -3608,6 +3583,7 @@ declare global {
     HexagonNode: typeof HexagonNode;
     PentagonNode: typeof PentagonNode;
     OctagonNode: typeof OctagonNode;
+    UnknownNodeTypeError: typeof UnknownNodeTypeError;
   }
 }
 
@@ -3623,4 +3599,5 @@ Object.assign(window, {
   HexagonNode,
   PentagonNode,
   OctagonNode,
+  UnknownNodeTypeError,
 });
