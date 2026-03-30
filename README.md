@@ -8,6 +8,25 @@ A lightweight, framework-agnostic diagram editor built on JointJS. Supports vani
 
 ---
 
+## Features
+
+- Extensible
+    - **Framework agnostic** — works with vanilla JS/TS; includes a first-class Angular component
+    - **Event-driven API** — subscribe to node, edge, and selection lifecycle events
+    - **Built-in node shapes** — Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, and Octagon
+    - **Custom node types** — define your own shapes with typed schemas, default options, and render functions via `DiagramNode.define()`
+    - **Edge styling** — configurable line color, width, style (solid/dashed/dotted), arrow markers, and connector routing (elbow/straight/curved)
+- UX friendly
+    - **Auto port switching** — edges automatically connect to the nearest port as nodes are moved
+    - **Auto arrange** — one-call Dagre-powered layout with `autoArrange()`
+    - **Zoom and pan** — mouse wheel zoom, click-and-drag pan, zoom to fit, and keyboard shortcuts
+    - **Keyboard shortcuts** — arrow keys to nudge, Delete/Backspace to remove, Ctrl+C/V to copy/paste, +/- to zoom
+    - **Touch support** — single-finger pan and two-finger pinch-to-zoom on mobile
+    - **Properties panel** — built-in sidebar for editing node and edge properties, including image upload
+- Data friendly
+    - **Serialize / deserialize** — save and restore full diagram state as JSON
+    - **Import / export** — download and re-upload diagrams as JSON files
+
 ## Installation
 
 ### npm
@@ -29,6 +48,8 @@ npm install @relevance/workflow-editor
     await editor.addNode(node);
 </script>
 ```
+
+---
 
 ## Usage
 
@@ -64,6 +85,8 @@ if (saved) await editor.deserialize(saved);
 ```
 
 ### Angular
+
+Tested with Angular 21. May work with Angular 15+ or 16+.
 
 ```typescript
 // app.component.ts
@@ -124,25 +147,26 @@ In `src/styles.scss`:
 
 ### DiagramEditor
 
-| Name                                                          | Type                          | Description                           |
-| ------------------------------------------------------------- | ----------------------------- | ------------------------------------- |
-| `addNode(node: DiagramNode, x?: number, y?: number)`          | `Promise<DiagramNode>`        | Add a node to the canvas              |
-| `removeNode(node: DiagramNode)`                               | `void`                        | Remove a node                         |
-| `getNodes()`                                                  | `DiagramNode[]`               | Get all nodes                         |
-| `getEdges()`                                                  | `Edge[]`                      | Get all edges                         |
-| `serialize()`                                                 | `string`                      | Serialize diagram to JSON string      |
-| `deserialize(json: string)`                                   | `Promise<DiagramEditor>`      | Restore diagram from JSON string      |
-| `registerNodeType(label: string, NodeClass: NodeConstructor)` | `void`                        | Register a custom node type           |
-| `autoArrange()`                                               | `DiagramEditor`               | Auto-arrange nodes using Dagre layout |
-| `zoomToFit()`                                                 | `DiagramEditor`               | Zoom to fit all content               |
-| `zoomIn(factor?: number)`                                     | `DiagramEditor`               | Zoom in                               |
-| `zoomOut(factor?: number)`                                    | `DiagramEditor`               | Zoom out                              |
-| `centerContent()`                                             | `DiagramEditor`               | Center the canvas                     |
-| `clearSelection()`                                            | `DiagramEditor`               | Clear current selection               |
-| `getSelectedItem()`                                           | `DiagramNode \| Edge \| null` | Get selected node or edge             |
-| `setAutoPortSwitching(enabled: boolean)`                      | `DiagramEditor`               | Toggle automatic port switching       |
-| `panTo(x: number, y: number)`                                 | `DiagramEditor`               | Pan canvas to position                |
-| `getZoomLevel()`                                              | `number`                      | Get current zoom level                |
+| Name                                                          | Type                          | Description                                                                                                          |
+| ------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `addNode(node: DiagramNode, x?: number, y?: number)`          | `Promise<DiagramNode>`        | Add a node to the canvas                                                                                             |
+| `removeNode(node: DiagramNode)`                               | `void`                        | Remove a node                                                                                                        |
+| `getNodes()`                                                  | `DiagramNode[]`               | Get all nodes                                                                                                        |
+| `getEdges()`                                                  | `Edge[]`                      | Get all edges                                                                                                        |
+| `serialize()`                                                 | `string`                      | Serialize diagram to JSON string                                                                                     |
+| `deserialize(json: string)`                                   | `Promise<DiagramEditor>`      | Restore diagram from JSON string                                                                                     |
+| `registerNodeType(label: string, NodeClass: NodeConstructor)` | `void`                        | Register a custom node type                                                                                          |
+| `registerBuiltInNodes()`                                      | `void`                        | Register all built-in node types (Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, Octagon) |
+| `autoArrange()`                                               | `DiagramEditor`               | Auto-arrange nodes using Dagre layout                                                                                |
+| `zoomToFit()`                                                 | `DiagramEditor`               | Zoom to fit all content                                                                                              |
+| `zoomIn(factor?: number)`                                     | `DiagramEditor`               | Zoom in                                                                                                              |
+| `zoomOut(factor?: number)`                                    | `DiagramEditor`               | Zoom out                                                                                                             |
+| `centerContent()`                                             | `DiagramEditor`               | Center the canvas                                                                                                    |
+| `clearSelection()`                                            | `DiagramEditor`               | Clear current selection                                                                                              |
+| `getSelectedItem()`                                           | `DiagramNode \| Edge \| null` | Get selected node or edge                                                                                            |
+| `setAutoPortSwitching(enabled: boolean)`                      | `DiagramEditor`               | Toggle automatic port switching                                                                                      |
+| `panTo(x: number, y: number)`                                 | `DiagramEditor`               | Pan canvas to position                                                                                               |
+| `getZoomLevel()`                                              | `number`                      | Get current zoom level                                                                                               |
 
 ### Nodes
 
