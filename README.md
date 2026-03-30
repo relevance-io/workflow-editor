@@ -24,7 +24,8 @@ A lightweight, framework-agnostic diagram editor built on JointJS. Supports vani
     - **Touch support** — single-finger pan and two-finger pinch-to-zoom on mobile
     - **Properties panel** — built-in sidebar for editing node and edge properties, including image upload
 - Data friendly
-    - **Serialize / deserialize** — save and restore full diagram state as JSON
+    - **Serialize / deserialize** — save and restore full diagram state as JSON, including node type definitions
+    - **Headless mode** — build diagrams programmatically without a DOM, then render later
     - **Import / export** — download and re-upload diagrams as JSON files
 
 ## Installation
@@ -69,8 +70,8 @@ await editor.addNode(start);
 await editor.addNode(decision);
 await editor.addNode(end);
 
-start.connect(decision);
-decision.connect(end);
+start.connectTo(decision);
+decision.connectTo(end);
 
 editor.autoArrange();
 
@@ -84,9 +85,28 @@ const saved = localStorage.getItem("diagram");
 if (saved) await editor.deserialize(saved);
 ```
 
+### Headless mode
+
+Create and manipulate a diagram without a DOM container, then render it later:
+
+```typescript
+import { DiagramEditor, RectangleNode, EllipseNode } from "@relevance/workflow-editor";
+
+// No container — headless mode
+const editor = new DiagramEditor();
+editor.registerBuiltInNodes();
+
+const start = await editor.addNode(new EllipseNode({ label: "Start" }));
+const process = await editor.addNode(new RectangleNode({ label: "Process" }));
+start.connectTo(process);
+
+// Render into the DOM when ready
+await editor.render(document.getElementById("editor")!);
+```
+
 ### Angular
 
-Tested with Angular 21. May work with Angular 15+ or 16+.
+Tested with Angular 21. May work with Angular 15+.
 
 ```typescript
 // app.component.ts
@@ -147,65 +167,71 @@ In `src/styles.scss`:
 
 ### DiagramEditor
 
-| Name                                                          | Type                          | Description                                                                                                          |
-| ------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `addNode(node: DiagramNode, x?: number, y?: number)`          | `Promise<DiagramNode>`        | Add a node to the canvas                                                                                             |
-| `removeNode(node: DiagramNode)`                               | `void`                        | Remove a node                                                                                                        |
-| `getNodes()`                                                  | `DiagramNode[]`               | Get all nodes                                                                                                        |
-| `getEdges()`                                                  | `Edge[]`                      | Get all edges                                                                                                        |
-| `serialize()`                                                 | `string`                      | Serialize diagram to JSON string                                                                                     |
-| `deserialize(json: string)`                                   | `Promise<DiagramEditor>`      | Restore diagram from JSON string                                                                                     |
-| `registerNodeType(label: string, NodeClass: NodeConstructor)` | `void`                        | Register a custom node type                                                                                          |
-| `registerBuiltInNodes()`                                      | `void`                        | Register all built-in node types (Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, Octagon) |
-| `autoArrange()`                                               | `DiagramEditor`               | Auto-arrange nodes using Dagre layout                                                                                |
-| `zoomToFit()`                                                 | `DiagramEditor`               | Zoom to fit all content                                                                                              |
-| `zoomIn(factor?: number)`                                     | `DiagramEditor`               | Zoom in                                                                                                              |
-| `zoomOut(factor?: number)`                                    | `DiagramEditor`               | Zoom out                                                                                                             |
-| `centerContent()`                                             | `DiagramEditor`               | Center the canvas                                                                                                    |
-| `clearSelection()`                                            | `DiagramEditor`               | Clear current selection                                                                                              |
-| `getSelectedItem()`                                           | `DiagramNode \| Edge \| null` | Get selected node or edge                                                                                            |
-| `setAutoPortSwitching(enabled: boolean)`                      | `DiagramEditor`               | Toggle automatic port switching                                                                                      |
-| `panTo(x: number, y: number)`                                 | `DiagramEditor`               | Pan canvas to position                                                                                               |
-| `getZoomLevel()`                                              | `number`                      | Get current zoom level                                                                                               |
+| Name                                                                         | Type                          | Description                                                                                                          |
+| ---------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `addNode(node: DiagramNode, x?: number, y?: number)`                         | `Promise<DiagramNode>`        | Add a node to the canvas                                                                                             |
+| `removeNode(node: DiagramNode)`                                              | `void`                        | Remove a node                                                                                                        |
+| `clear()`                                                                    | `DiagramEditor`               | Remove all nodes and edges                                                                                           |
+| `getNodes()`                                                                 | `DiagramNode[]`               | Get all nodes                                                                                                        |
+| `getEdges()`                                                                 | `Edge[]`                      | Get all edges                                                                                                        |
+| `serialize(includeTypes?: boolean)`                                          | `string`                      | Serialize diagram to JSON string. Includes node type definitions by default                                          |
+| `serializeNodes()`                                                           | `{ nodes, edges }`            | Serialize only the nodes and edges (no type definitions)                                                             |
+| `serializeTypes()`                                                           | `SerializedNodeType[]`        | Serialize only the registered node type definitions                                                                  |
+| `deserialize(json: string \| SerializedDiagram)`                             | `Promise<DiagramEditor>`      | Restore diagram from JSON. Re-registers node types if present in the data                                            |
+| `render(container: HTMLElement)`                                             | `Promise<DiagramEditor>`      | Render a headless editor into a DOM container                                                                        |
+| `registerNodeType(label: string, NodeClass: NodeConstructor, name?: string)` | `void`                        | Register a custom node type with an optional friendly display name                                                   |
+| `registerBuiltInNodes()`                                                     | `void`                        | Register all built-in node types (Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, Octagon) |
+| `clearRegisteredNodes()`                                                     | `DiagramEditor`               | Unregister all node types and clear the library sidebar                                                              |
+| `autoArrange()`                                                              | `DiagramEditor`               | Auto-arrange nodes using Dagre layout                                                                                |
+| `zoomToFit()`                                                                | `DiagramEditor`               | Zoom to fit all content                                                                                              |
+| `zoomIn(factor?: number)`                                                    | `DiagramEditor`               | Zoom in                                                                                                              |
+| `zoomOut(factor?: number)`                                                   | `DiagramEditor`               | Zoom out                                                                                                             |
+| `zoomReset()`                                                                | `DiagramEditor`               | Reset zoom to 1:1                                                                                                    |
+| `centerContent()`                                                            | `DiagramEditor`               | Center the canvas                                                                                                    |
+| `clearSelection()`                                                           | `DiagramEditor`               | Clear current selection                                                                                              |
+| `getSelectedItem()`                                                          | `DiagramNode \| Edge \| null` | Get selected node or edge                                                                                            |
+| `setAutoPortSwitching(enabled: boolean)`                                     | `DiagramEditor`               | Toggle automatic port switching                                                                                      |
+| `panTo(x: number, y: number)`                                                | `DiagramEditor`               | Pan canvas to position                                                                                               |
+| `getZoomLevel()`                                                             | `number`                      | Get current zoom level                                                                                               |
 
 ### Nodes
 
 All node classes extend `DiagramNode` and share the following properties and methods:
 
-| Name                                                                     | Type             | Description                             |
-| ------------------------------------------------------------------------ | ---------------- | --------------------------------------- |
-| `id`                                                                     | `string \| null` | Unique identifier                       |
-| `x`                                                                      | `number`         | X position on canvas                    |
-| `y`                                                                      | `number`         | Y position on canvas                    |
-| `width`                                                                  | `number`         | Width of the node                       |
-| `height`                                                                 | `number`         | Height of the node                      |
-| `label`                                                                  | `string`         | Display label                           |
-| `labelColor`                                                             | `string`         | Label text color                        |
-| `labelFontSize`                                                          | `number`         | Label font size (%)                     |
-| `description`                                                            | `string`         | Secondary text below label              |
-| `descriptionColor`                                                       | `string`         | Description text color                  |
-| `backgroundColor`                                                        | `string`         | Fill color                              |
-| `borderColor`                                                            | `string`         | Border color                            |
-| `borderWidth`                                                            | `number`         | Border width in pixels                  |
-| `imageUrl`                                                               | `string`         | URL of an icon/image to display         |
-| `imageWidth`                                                             | `number`         | Image width in pixels                   |
-| `imageHeight`                                                            | `number`         | Image height in pixels                  |
-| `status`                                                                 | `string`         | Arbitrary status string                 |
-| `priority`                                                               | `number`         | Arbitrary priority number               |
-| `moveTo(x: number, y: number)`                                           | `DiagramNode`    | Move node to absolute position          |
-| `moveBy(dx: number, dy: number)`                                         | `DiagramNode`    | Move node by relative offset            |
-| `toFront()`                                                              | `DiagramNode`    | Bring node to front                     |
-| `toBack()`                                                               | `DiagramNode`    | Send node to back                       |
-| `select()`                                                               | `DiagramNode`    | Select this node                        |
-| `deselect()`                                                             | `DiagramNode`    | Deselect this node                      |
-| `remove()`                                                               | `void`           | Remove node from canvas                 |
-| `connect(target: DiagramNode, sourcePort?: number, targetPort?: number)` | `Edge \| null`   | Connect to another node                 |
-| `getEdges()`                                                             | `Edge[]`         | Get all edges connected to this node    |
-| `getIncomingEdges()`                                                     | `Edge[]`         | Get edges where this node is the target |
-| `getOutgoingEdges()`                                                     | `Edge[]`         | Get edges where this node is the source |
-| `getCustomProperty(key: string)`                                         | `any`            | Get a custom property value             |
-| `setCustomProperty(key: string, value: any)`                             | `void`           | Set a custom property value             |
-| `getSchema()`                                                            | `Schema`         | Get the custom properties schema        |
+| Name                                                                       | Type                  | Description                                                |
+| -------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------- |
+| `id`                                                                       | `string \| null`      | Unique identifier                                          |
+| `x`                                                                        | `number \| undefined` | X position on canvas (undefined in headless mode if unset) |
+| `y`                                                                        | `number \| undefined` | Y position on canvas (undefined in headless mode if unset) |
+| `width`                                                                    | `number`              | Width of the node                                          |
+| `height`                                                                   | `number`              | Height of the node                                         |
+| `label`                                                                    | `string`              | Display label                                              |
+| `labelColor`                                                               | `string`              | Label text color                                           |
+| `labelFontSize`                                                            | `number`              | Label font size (%)                                        |
+| `description`                                                              | `string`              | Secondary text below label                                 |
+| `descriptionColor`                                                         | `string`              | Description text color                                     |
+| `backgroundColor`                                                          | `string`              | Fill color                                                 |
+| `borderColor`                                                              | `string`              | Border color                                               |
+| `borderWidth`                                                              | `number`              | Border width in pixels                                     |
+| `imageUrl`                                                                 | `string`              | URL of an icon/image to display                            |
+| `imageWidth`                                                               | `number`              | Image width in pixels                                      |
+| `imageHeight`                                                              | `number`              | Image height in pixels                                     |
+| `status`                                                                   | `string`              | Arbitrary status string                                    |
+| `priority`                                                                 | `number`              | Arbitrary priority number                                  |
+| `moveTo(x: number, y: number)`                                             | `DiagramNode`         | Move node to absolute position                             |
+| `moveBy(dx: number, dy: number)`                                           | `DiagramNode`         | Move node by relative offset                               |
+| `toFront()`                                                                | `DiagramNode`         | Bring node to front                                        |
+| `toBack()`                                                                 | `DiagramNode`         | Send node to back                                          |
+| `select()`                                                                 | `DiagramNode`         | Select this node                                           |
+| `deselect()`                                                               | `DiagramNode`         | Deselect this node                                         |
+| `remove()`                                                                 | `void`                | Remove node from canvas                                    |
+| `connectTo(target: DiagramNode, sourcePort?: number, targetPort?: number)` | `Edge \| null`        | Connect to another node                                    |
+| `getEdges()`                                                               | `Edge[]`              | Get all edges connected to this node                       |
+| `getIncomingEdges()`                                                       | `Edge[]`              | Get edges where this node is the target                    |
+| `getOutgoingEdges()`                                                       | `Edge[]`              | Get edges where this node is the source                    |
+| `getCustomProperty(key: string)`                                           | `any`                 | Get a custom property value                                |
+| `setCustomProperty(key: string, value: any)`                               | `void`                | Set a custom property value                                |
+| `getSchema()`                                                              | `Schema`              | Get the custom properties schema                           |
 
 ### Edges
 
@@ -231,6 +257,30 @@ All node classes extend `DiagramNode` and share the following properties and met
 | `remove()`                           | `void`                              | Remove edge from canvas           |
 | `addPathPoint(x: number, y: number)` | `PathPoint`                         | Add a bend point to the edge path |
 | `getPathPoints()`                    | `PathPoint[]`                       | Get all bend points               |
+
+### Serialization types
+
+```typescript
+// A registered node type entry in serialized data.
+// Built-in types are serialized as plain strings (their nodeClass).
+// Custom types include their full definition.
+type SerializedNodeType =
+    | string
+    | {
+          nodeClass: string;
+          name?: string; // friendly display name
+          baseClass: string; // nodeClass of the base shape
+          defaultOptions: NodeOptions;
+          schema: Schema;
+          // note: renderFn is never serialized
+      };
+
+interface SerializedDiagram {
+    nodes: SerializedNode[];
+    edges: SerializedEdge[];
+    nodeTypes?: SerializedNodeType[]; // omitted when serialize(false) is called
+}
+```
 
 ### Events
 
@@ -283,15 +333,18 @@ const TaskNode = (DiagramNode as any).define(
             choices: { low: "Low", medium: "Medium", high: "High" },
         },
     },
-    // Render function — called when custom props change
+    // Render function — called when custom props change.
+    // Not serialized; re-register with the same renderFn after import
+    // and it will be preserved automatically.
     (node) => {
         node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
         node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
     },
 );
 
-// Register so it appears in the shape library and survives serialize/deserialize
-editor.registerNodeType("Task", TaskNode);
+// Register so it appears in the shape library and survives serialize/deserialize.
+// The optional third argument sets the friendly name shown in the library.
+editor.registerNodeType("Task", TaskNode, "My Task");
 
 const task = new TaskNode({ label: "My Task" });
 await editor.addNode(task);

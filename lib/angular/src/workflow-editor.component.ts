@@ -8,7 +8,14 @@ import {
   Output,
   EventEmitter,
 } from '@angular/core';
-import { DiagramEditor, DiagramNode, Edge } from '@relevance/workflow-editor';
+import {
+  DiagramEditor,
+  DiagramNode,
+  Edge,
+  NodeConstructor,
+  SerializedDiagram,
+  SerializedNodeType,
+} from '@relevance/workflow-editor';
 
 @Component({
   selector: 'workflow-editor',
@@ -68,6 +75,10 @@ export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
     this._editor.removeNode(node);
   }
 
+  clear(): void {
+    this._editor.clear();
+  }
+
   getNodes(): DiagramNode[] {
     return this._editor.getNodes();
   }
@@ -76,12 +87,32 @@ export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
     return this._editor.getEdges();
   }
 
-  serialize(): string {
-    return this._editor.serialize();
+  serialize(includeTypes = true): string {
+    return this._editor.serialize(includeTypes);
   }
 
-  deserialize(json: string): Promise<DiagramEditor> {
+  serializeNodes(): { nodes: any[]; edges: any[] } {
+    return this._editor.serializeNodes();
+  }
+
+  serializeTypes(): SerializedNodeType[] {
+    return this._editor.serializeTypes();
+  }
+
+  deserialize(json: string | SerializedDiagram): Promise<DiagramEditor> {
     return this._editor.deserialize(json);
+  }
+
+  registerNodeType(label: string, NodeClass: NodeConstructor, name?: string): void {
+    this._editor.registerNodeType(label, NodeClass, name);
+  }
+
+  registerBuiltInNodes(): void {
+    this._editor.registerBuiltInNodes();
+  }
+
+  clearRegisteredNodes(): void {
+    this._editor.clearRegisteredNodes();
   }
 
   autoArrange(): void {
@@ -92,8 +123,28 @@ export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
     this._editor.zoomToFit();
   }
 
+  zoomIn(factor?: number): void {
+    this._editor.zoomIn(factor);
+  }
+
+  zoomOut(factor?: number): void {
+    this._editor.zoomOut(factor);
+  }
+
+  zoomReset(): void {
+    this._editor.zoomReset();
+  }
+
+  getZoomLevel(): number {
+    return this._editor.getZoomLevel();
+  }
+
   centerContent(): void {
     this._editor.centerContent();
+  }
+
+  panTo(x: number, y: number): void {
+    this._editor.panTo(x, y);
   }
 
   clearSelection(): void {
@@ -102,5 +153,9 @@ export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
 
   getSelectedItem(): DiagramNode | Edge | null {
     return this._editor.getSelectedItem();
+  }
+
+  setAutoPortSwitching(enabled: boolean): void {
+    this._editor.setAutoPortSwitching(enabled);
   }
 }

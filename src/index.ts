@@ -861,7 +861,7 @@ export class DiagramNode extends EventBus {
     return this.getEdges().filter((edge) => edge.source === this);
   }
 
-  public connect(
+  public connectTo(
     targetNode: DiagramNode,
     sourcePortIndex: number | null = null,
     targetPortIndex: number | null = null,
@@ -2293,7 +2293,7 @@ export class DiagramEditor extends EventBus {
         continue;
       }
 
-      const edge = sourceNode.connect(
+      const edge = sourceNode.connectTo(
         targetNode,
         edgeData.sourcePort,
         edgeData.targetPort,
