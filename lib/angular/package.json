@@ -5,7 +5,7 @@
   "peerDependencies": {
     "@angular/common": ">=21.0.0",
     "@angular/core": ">=21.0.0",
-    "@relevance/workflow-editor": "^1.1.0"
+    "@relevance/workflow-editor": "^1.1.0-0"
   },
   "devDependencies": {
     "@relevance/workflow-editor": "file:../../dist",
