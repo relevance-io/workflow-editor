@@ -30,8 +30,6 @@ npm install @relevance/workflow-editor
 </script>
 ```
 
----
-
 ## Usage
 
 ### Vanilla JS / TypeScript

@@ -2,10 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Diagram Editor</title>
     <link rel="stylesheet" href="./index.css" />
     <style></style>
@@ -17,16 +14,11 @@
       // Bootstrap — create the editor and add demo nodes
       // =============================================================
 
-      import {
-        DiagramEditor,
-        DiagramNode,
-        RectangleNode,
-        EllipseNode,
-      } from "./index.ts";
+      import { DiagramEditor, DiagramNode, RectangleNode, EllipseNode } from "./index.ts";
 
       const editor = new DiagramEditor(document.body);
+      editor.registerBuiltInNodes();
 
-      // example custom node type with extra properties and a render callback
       const TaskNode = DiagramNode.define(
         RectangleNode,
         { label: "New Task", backgroundColor: "#f0f8ff" },
@@ -51,24 +43,16 @@
         },
         (node) => {
           // update the node's appearance when the 'done' flag changes
-          node.backgroundColor = node.getCustomProperty("done")
-            ? "#d4edda"
-            : "#f0f8ff";
-          node.borderColor = node.getCustomProperty("done")
-            ? "#28a745"
-            : "#adb5bd";
+          node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
+          node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
         },
       );
       editor.registerNodeType("Task", TaskNode);
 
       (async () => {
         const start = await editor.addNode(new EllipseNode({ label: "START" }));
-        const process = await editor.addNode(
-          new RectangleNode({ label: "PROCESS" }),
-        );
-        const task = await editor.addNode(
-          new TaskNode({ label: "My Task", assignee: "Alice", effort: 3 }),
-        );
+        const process = await editor.addNode(new RectangleNode({ label: "PROCESS" }));
+        const task = await editor.addNode(new TaskNode({ label: "My Task", assignee: "Alice", effort: 3 }));
       })();
     </script>
   </body>
