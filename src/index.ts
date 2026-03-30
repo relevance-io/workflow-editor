@@ -1760,7 +1760,8 @@ export class DiagramEditor extends EventBus {
       height,
     );
 
-    const portRadius = this._isMobile() ? 14 : 6;
+    // const portRadius = this._isMobile() ? 14 : 6;
+    const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
     const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
     const customLabel = (node.constructor as any).__nodeLabel;
@@ -2258,7 +2259,8 @@ export class DiagramEditor extends EventBus {
         continue;
       }
 
-      const portRadius = this._isMobile() ? 14 : 6;
+      // const portRadius = this._isMobile() ? 14 : 6;
+      const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
       const position: Point = { x: nodeData.x ?? 0, y: nodeData.y ?? 0 };
       const cell = node._buildCell(position, joint.shapes, portRadius);
       cell.attr('label/text', node._label);
