@@ -94,7 +94,18 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
 
+      - name: Check if current version is tagged
+        id: check_tag
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "version-exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "version-exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Bump patch version
+        if: steps.check_tag.outputs.version-exists == 'true'
         id: version
         run: |
           git config user.name "github-actions[bot]"
@@ -133,6 +144,7 @@ jobs:
         run: npm publish --access public
 
       - name: Commit version bump
+        if: steps.check_tag.outputs.version-exists == 'true'
         run: |
           git add package.json package-lock.json
           git commit -m "chore: bump version to v${{ steps.version.outputs.version }}"
