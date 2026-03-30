@@ -136,7 +136,7 @@ jobs:
       - name: Get commits since last tag
         id: changelog
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          LAST_TAG=$(git tag --sort=-creatordate | head -n 1)
           if [ -z "$LAST_TAG" ]; then
             COMMITS=$(git log --pretty=format:"%s" | head -20 | grep -v "^chore:" | grep -v "^Revert" | awk '!seen[$0]++' | sed 's/^/- /')
             COMPARE_URL="https://github.com/${{ github.repository }}/commits/v${{ steps.version.outputs.version }}"
