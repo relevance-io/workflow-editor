@@ -97,20 +97,39 @@ jobs:
       - name: Check if current version is tagged
         id: check_tag
         run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+          VERSION=$(node -p "require('./package.json').version")
+
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
             echo "version-exists=true" >> $GITHUB_OUTPUT
           else
             echo "version-exists=false" >> $GITHUB_OUTPUT
           fi
 
+          VERSION_TAG=latest
+          if \
+            [[ "${VERSION}" =~ "alpha" ]] || \
+            [[ "${VERSION}" =~ "beta" ]] || \
+            [[ "${VERSION}" =~ "rc" ]];
+          then
+            VERSION_TAG=next
+          fi
+
+          echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+
       - name: Bump patch version
-        if: steps.check_tag.outputs.version-exists == 'true'
         id: version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version patch --no-git-tag-version
+
+          if [ "${{ steps.check_tag.outputs.version-exists }}" == "true" ]; then
+            if [ "${{ steps.check_tag.outputs.version_tag }}" == "next" ]; then
+              npm version prerelease --no-git-tag-version
+            else
+              npm version patch --no-git-tag-version
+            fi
+          fi
+
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -141,7 +160,7 @@ jobs:
 
       - name: Publish to npm
         working-directory: dist/
-        run: npm publish --access public
+        run: npm publish --access public --tag "${{ steps.check_tag.outputs.version_tag }}"
 
       - name: Commit version bump
         if: steps.check_tag.outputs.version-exists == 'true'
@@ -159,6 +178,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.check_tag.outputs.version_tag == 'next' }}
           files: workflow-editor-${{ steps.version.outputs.version }}.zip
           body: |
             ${{ steps.changelog.outputs.commits }}
