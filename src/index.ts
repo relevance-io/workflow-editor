@@ -73,9 +73,20 @@ export interface SerializedEdge {
   vertices: Point[];
 }
 
+export type SerializedNodeType =
+  | string
+  | {
+      nodeClass: string;
+      name?: string;
+      baseClass: string;
+      defaultOptions: NodeOptions;
+      schema: Schema;
+    };
+
 export interface SerializedDiagram {
   nodes: SerializedNode[];
   edges: SerializedEdge[];
+  nodeTypes?: SerializedNodeType[];
 }
 
 export interface NodeOptions {
@@ -1000,6 +1011,11 @@ export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
     }
   }
 
+  (CustomNode as any).__renderFn = renderFn;
+  (CustomNode as any).__defaultOptions = defaultOptions;
+  (CustomNode as any).__schema = schema;
+  (CustomNode as any).__baseClass = (BaseNodeClass as any).nodeClass;
+
   (CustomNode.prototype as any)._getShapeType = (
     BaseNodeClass.prototype as any
   )._getShapeType;
@@ -1020,6 +1036,7 @@ export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 // =============================================================
 
 export class RectangleNode extends DiagramNode {
+  public static nodeClass = 'RectangleNode';
   public get portCount(): number {
     return 4;
   }
@@ -1045,6 +1062,7 @@ export class RectangleNode extends DiagramNode {
 }
 
 export class SquareNode extends DiagramNode {
+  public static nodeClass = 'SquareNode';
   public get portCount(): number {
     return 4;
   }
@@ -1070,6 +1088,7 @@ export class SquareNode extends DiagramNode {
 }
 
 export class EllipseNode extends DiagramNode {
+  public static nodeClass = 'EllipseNode';
   public get portCount(): number {
     return 4;
   }
@@ -1095,6 +1114,7 @@ export class EllipseNode extends DiagramNode {
 }
 
 export class CircleNode extends DiagramNode {
+  public static nodeClass = 'CircleNode';
   public get portCount(): number {
     return 4;
   }
@@ -1120,6 +1140,7 @@ export class CircleNode extends DiagramNode {
 }
 
 export class DiamondNode extends DiagramNode {
+  public static nodeClass = 'DiamondNode';
   public get portCount(): number {
     return 4;
   }
@@ -1151,6 +1172,7 @@ export class DiamondNode extends DiagramNode {
 }
 
 export class TriangleNode extends DiagramNode {
+  public static nodeClass = 'TriangleNode';
   public get portCount(): number {
     return 3;
   }
@@ -1181,6 +1203,7 @@ export class TriangleNode extends DiagramNode {
 }
 
 export class HexagonNode extends DiagramNode {
+  public static nodeClass = 'HexagonNode';
   public get portCount(): number {
     return 6;
   }
@@ -1214,6 +1237,7 @@ export class HexagonNode extends DiagramNode {
 }
 
 export class PentagonNode extends DiagramNode {
+  public static nodeClass = 'PentagonNode';
   public get portCount(): number {
     return 5;
   }
@@ -1246,6 +1270,7 @@ export class PentagonNode extends DiagramNode {
 }
 
 export class OctagonNode extends DiagramNode {
+  public static nodeClass = 'OctagonNode';
   public get portCount(): number {
     return 8;
   }
@@ -1444,6 +1469,19 @@ function _buildPolygonCell(
 // DiagramEditor — the main controller
 // =============================================================
 
+const builtInShapes: { type: ShapeType; cls: NodeConstructor; name: string }[] =
+  [
+    { type: 'rect', cls: RectangleNode, name: 'Rectangle' },
+    { type: 'square', cls: SquareNode, name: 'Square' },
+    { type: 'ellipse', cls: EllipseNode, name: 'Ellipse' },
+    { type: 'circle', cls: CircleNode, name: 'Circle' },
+    { type: 'diamond', cls: DiamondNode, name: 'Diamond' },
+    { type: 'triangle', cls: TriangleNode, name: 'Triangle' },
+    { type: 'hexagon', cls: HexagonNode, name: 'Hexagon' },
+    { type: 'pentagon', cls: PentagonNode, name: 'Pentagon' },
+    { type: 'octagon', cls: OctagonNode, name: 'Octagon' },
+  ];
+
 export class DiagramEditor extends EventBus {
   // private fields
   private _nodeMap: Map<string, DiagramNode>;
@@ -1537,28 +1575,16 @@ export class DiagramEditor extends EventBus {
       });
     });
 
-    if (!this._isHeadless) {
-      this._buildLayout();
-      this._setupRenderer();
-      this._attachButtonListeners();
-      this._attachDiagramListeners();
-      this._attachTouchListeners();
-      this._attachKeyboardShortcuts();
-
-      if (this._isMobile()) {
-        this._setSidebarCollapsed(this._leftSidebar, true);
-        this._setSidebarCollapsed(this._rightSidebar, true);
-      }
+    if (container) {
+      this.render(container);
     }
   }
 
   // ── Public API ──────────────────────────────────────────────
 
   public async render(container: HTMLElement): Promise<this> {
-    if (!this._isHeadless) {
-      throw new Error(
-        'DiagramEditor.render() can only be called in headless mode.',
-      );
+    if (this._graph) {
+      throw new Error('DiagramEditor.render() can only be called once.');
     }
 
     this.container = container;
@@ -1571,7 +1597,7 @@ export class DiagramEditor extends EventBus {
       const item = this._shapeLibrary.appendChild(
         this._makeElement('div', 'wf-node-template'),
       ) as HTMLElement;
-      item.textContent = label;
+      item.textContent = (NodeClass as any).__nodeName ?? label;
       item.draggable = true;
       item.dataset.nodeTypeLabel = label;
 
@@ -1593,22 +1619,6 @@ export class DiagramEditor extends EventBus {
     this._attachDiagramListeners();
     this._attachTouchListeners();
     this._attachKeyboardShortcuts();
-
-    [
-      'node:add',
-      'node:remove',
-      'node:change',
-      'node:move',
-      'edge:add',
-      'edge:remove',
-      'edge:change',
-    ].forEach((event) => {
-      this.on(event, () => {
-        if (!this._isLoading) {
-          this.emit('change');
-        }
-      });
-    });
 
     if (this._isMobile()) {
       this._setSidebarCollapsed(this._leftSidebar, true);
@@ -1636,30 +1646,41 @@ export class DiagramEditor extends EventBus {
 
     // Serialize while still headless so the headless branch is used,
     // then flip the flag before deserializing into the live renderer.
+    // Serialize while still headless, then flip before deserializing
     const serialized = JSON.parse(this.serialize()) as SerializedDiagram;
     this._isHeadless = false;
 
-    if (shouldAutoArrange) {
-      serialized.nodes.forEach((n) => {
-        delete n.x;
-        delete n.y;
-      });
-    }
-    await this.deserialize(serialized);
+    if (
+      serialized.nodes.length > 0 ||
+      (serialized.nodeTypes && serialized.nodeTypes.length > 0)
+    ) {
+      if (shouldAutoArrange) {
+        serialized.nodes.forEach((n) => {
+          delete n.x;
+          delete n.y;
+        });
+      }
+      await this.deserialize(serialized);
 
-    if (shouldAutoArrange) {
-      this.autoArrange();
+      if (shouldAutoArrange) {
+        this.autoArrange();
+      }
     }
 
     return this;
   }
 
-  public registerNodeType(label: string, NodeClass: NodeConstructor): void {
-    if (!this._isHeadless) {
+  public registerNodeType(
+    label: string,
+    NodeClass: NodeConstructor,
+    name?: string,
+  ): void {
+    const displayName = name ?? label;
+    if (!this._isHeadless && !this._registeredNodeTypes[label]) {
       const item = this._shapeLibrary.appendChild(
         this._makeElement('div', 'wf-node-template'),
       ) as HTMLElement;
-      item.textContent = label;
+      item.textContent = displayName;
       item.draggable = true;
       item.dataset.nodeTypeLabel = label;
 
@@ -1679,19 +1700,17 @@ export class DiagramEditor extends EventBus {
     }
 
     (NodeClass as any).__nodeLabel = label;
+    (NodeClass as any).__nodeName = displayName;
+    if (!Object.prototype.hasOwnProperty.call(NodeClass, 'nodeClass')) {
+      (NodeClass as any).nodeClass = label;
+    }
     this._registeredNodeTypes[label] = NodeClass;
   }
 
   public registerBuiltInNodes(): void {
-    this.registerNodeType('Rectangle', RectangleNode);
-    this.registerNodeType('Square', SquareNode);
-    this.registerNodeType('Ellipse', EllipseNode);
-    this.registerNodeType('Circle', CircleNode);
-    this.registerNodeType('Diamond', DiamondNode);
-    this.registerNodeType('Triangle', TriangleNode);
-    this.registerNodeType('Hexagon', HexagonNode);
-    this.registerNodeType('Pentagon', PentagonNode);
-    this.registerNodeType('Octagon', OctagonNode);
+    for (const { type, cls, name } of builtInShapes) {
+      this.registerNodeType(cls.name, cls, name);
+    }
   }
 
   public addNode(
@@ -1969,8 +1988,27 @@ export class DiagramEditor extends EventBus {
     return this;
   }
 
-  public serialize(): string {
-    // Headless: build from stored nodes/edges directly
+  public serializeTypes(): SerializedNodeType[] {
+    return Object.entries(this._registeredNodeTypes).map(([label, cls]) => {
+      const schema = (cls as any).__schema;
+      const nodeClass = (cls as any).nodeClass ?? label;
+      if (schema) {
+        return {
+          nodeClass,
+          name: (cls as any).__nodeName,
+          baseClass: (cls as any).__baseClass,
+          defaultOptions: (cls as any).__defaultOptions ?? {},
+          schema,
+        };
+      }
+      return nodeClass as string;
+    });
+  }
+
+  public serializeNodes(): {
+    nodes: SerializedNode[];
+    edges: SerializedEdge[];
+  } {
     if (this._isHeadless) {
       const nodes: SerializedNode[] = [...this._nodeMap.values()].map(
         (node) => ({
@@ -2014,13 +2052,15 @@ export class DiagramEditor extends EventBus {
         vertices: e.props.vertices ?? [],
       }));
 
-      return JSON.stringify({ nodes, edges });
+      return { nodes, edges };
     }
 
-    // Rendered: read from JointJS as before
     const nodes: SerializedNode[] = [...this._nodeMap.values()].map((node) => ({
       id: node.cell.id,
-      nodeClass: node.cell.get('nodeClass') ?? (node.constructor as any).nodeClass ?? (node as any)._nodeClass,
+      nodeClass:
+        node.cell.get('nodeClass') ??
+        (node.constructor as any).nodeClass ??
+        (node as any)._nodeClass,
       x: node.x,
       y: node.y,
       props: {
@@ -2069,14 +2109,102 @@ export class DiagramEditor extends EventBus {
       };
     });
 
-    return JSON.stringify({ nodes, edges });
+    return { nodes, edges };
+  }
+
+  public serialize(includeTypes: boolean = true): string {
+    const { nodes, edges } = this.serializeNodes();
+    const result: SerializedDiagram = { nodes, edges };
+    if (includeTypes) {
+      result.nodeTypes = this.serializeTypes();
+    }
+    return JSON.stringify(result);
   }
 
   public async deserialize(json: string | SerializedDiagram): Promise<this> {
-    const { nodes: nodeDataList, edges: edgeDataList }: SerializedDiagram =
-      typeof json === 'string' ? JSON.parse(json) : json;
+    const {
+      nodes: nodeDataList,
+      edges: edgeDataList,
+      nodeTypes,
+    }: SerializedDiagram = typeof json === 'string' ? JSON.parse(json) : json;
     if (!Array.isArray(nodeDataList)) {
       throw new Error('Invalid diagram file format.');
+    }
+
+    // Re-register node types if present in the import
+    if (nodeTypes != null && nodeTypes.length > 0) {
+      // Build a set of nodeClass strings in the import
+      const importedKeys = new Set(
+        nodeTypes.map((t) => (typeof t === 'string' ? t : t.nodeClass)),
+      );
+
+      // Remove any currently registered types not in the import
+      for (const key of Object.keys(this._registeredNodeTypes)) {
+        const cls = this._registeredNodeTypes[key];
+        const nodeClass = (cls as any).nodeClass;
+        if (!importedKeys.has(nodeClass)) {
+          delete this._registeredNodeTypes[key];
+          if (!this._isHeadless) {
+            const item = this._shapeLibrary.querySelector(
+              `[data-node-type-label="${key}"]`,
+            );
+            if (item) {
+              item.remove();
+            }
+          }
+        }
+      }
+
+      for (const typeData of nodeTypes) {
+        if (typeof typeData === 'string') {
+          // Built-in — register if not already registered, reusing existing label if present
+          const typeInfo = builtInShapes.find((t) => t.cls.name === typeData);
+
+          const cls = typeInfo?.cls;
+          if (cls) {
+            const existingEntry = Object.entries(
+              this._registeredNodeTypes,
+            ).find(([, c]) => (c as any).nodeClass === typeData);
+            if (!existingEntry) {
+              this.registerNodeType(typeData, cls, typeInfo.name);
+            }
+          }
+        } else {
+          // Custom — re-define, preserving any existing renderFn from code
+          const existing = Object.values(this._registeredNodeTypes).find(
+            (cls) => (cls as any).nodeClass === typeData.nodeClass,
+          );
+          const existingRenderFn = existing
+            ? ((existing as any).__renderFn ?? null)
+            : null;
+
+          const baseClass =
+            builtInShapes.find((t) => t.cls.name === typeData.baseClass)?.cls ??
+            (Object.values(this._registeredNodeTypes).find(
+              (cls) => (cls as any).nodeClass === typeData.baseClass,
+            ) as NodeConstructor | undefined);
+          if (!baseClass) {
+            throw new UnknownNodeTypeError(typeData.baseClass);
+          }
+          const NodeClass = (DiagramNode as any).define(
+            baseClass,
+            typeData.defaultOptions,
+            typeData.schema,
+            existingRenderFn,
+          );
+          (NodeClass as any).nodeClass = typeData.nodeClass;
+          const existingLabel = existing
+            ? Object.keys(this._registeredNodeTypes).find(
+                (k) => this._registeredNodeTypes[k] === existing,
+              )
+            : typeData.nodeClass;
+          this.registerNodeType(
+            existingLabel ?? typeData.nodeClass,
+            NodeClass,
+            typeData.name,
+          );
+        }
+      }
     }
 
     if (!this._isHeadless) {
@@ -3102,17 +3230,6 @@ export class DiagramEditor extends EventBus {
       }
 
       const droppedType = event.dataTransfer!.getData('type');
-      const builtInShapes: { type: ShapeType; cls: NodeConstructor }[] = [
-        { type: 'rect', cls: RectangleNode },
-        { type: 'square', cls: SquareNode },
-        { type: 'ellipse', cls: EllipseNode },
-        { type: 'circle', cls: CircleNode },
-        { type: 'diamond', cls: DiamondNode },
-        { type: 'triangle', cls: TriangleNode },
-        { type: 'hexagon', cls: HexagonNode },
-        { type: 'pentagon', cls: PentagonNode },
-        { type: 'octagon', cls: OctagonNode },
-      ];
 
       const match = builtInShapes.find((shape) => shape.type === droppedType);
       if (!match) {

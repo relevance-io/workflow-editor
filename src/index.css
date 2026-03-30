@@ -387,11 +387,11 @@ html {
     display: none;
 }
 
-@media (pointer: coarse) {
+/* @media (pointer: coarse) {
   .joint-port-body {
     r: 16px;
     fill: #3498db;
     stroke: #fff;
     stroke-width: 2px;
   }
-}
+} */

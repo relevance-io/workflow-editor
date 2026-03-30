@@ -16,43 +16,49 @@
 
       import { DiagramEditor, DiagramNode, RectangleNode, EllipseNode } from "./index.ts";
 
-      const editor = new DiagramEditor(document.body);
-      editor.registerBuiltInNodes();
-
-      const TaskNode = DiagramNode.define(
-        RectangleNode,
-        { label: "New Task", backgroundColor: "#f0f8ff" },
-        {
-          assignee: { label: "Assignee", type: "text", default: "" },
-          effort: {
-            label: "Effort",
-            type: "number",
-            default: 1,
-            min: 1,
-            max: 10,
-          },
-          done: { label: "Done", type: "boolean", default: false },
-          mode: {
-            label: "Mode",
-            type: "choice",
-            default: "auto",
-            choices: { auto: "Automatic", manual: "Manual" },
-          },
-          note: { label: "Note", type: "textarea", default: "" },
-          accent: { label: "Accent", type: "color", default: "#3498db" },
-        },
-        (node) => {
-          // update the node's appearance when the 'done' flag changes
-          node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
-          node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
-        },
-      );
-      editor.registerNodeType("Task", TaskNode);
-
       (async () => {
+        const editor = new DiagramEditor();
+        editor.registerBuiltInNodes();
+
+        const TaskNode = DiagramNode.define(
+          RectangleNode,
+          { label: "New Task", backgroundColor: "#f0f8ff" },
+          {
+            assignee: { label: "Assignee", type: "text", default: "" },
+            effort: {
+              label: "Effort",
+              type: "number",
+              default: 1,
+              min: 1,
+              max: 10,
+            },
+            done: { label: "Done", type: "boolean", default: false },
+            mode: {
+              label: "Mode",
+              type: "choice",
+              default: "auto",
+              choices: { auto: "Automatic", manual: "Manual" },
+            },
+            note: { label: "Note", type: "textarea", default: "" },
+            accent: { label: "Accent", type: "color", default: "#3498db" },
+          },
+          (node) => {
+            // update the node's appearance when the 'done' flag changes
+            node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
+            node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
+          },
+        );
+        editor.registerNodeType("Task", TaskNode);
+
         const start = await editor.addNode(new EllipseNode({ label: "START" }));
         const process = await editor.addNode(new RectangleNode({ label: "PROCESS" }));
         const task = await editor.addNode(new TaskNode({ label: "My Task", assignee: "Alice", effort: 3 }));
+        start.connect(process);
+        process.connect(task);
+        task.connect(start);
+        task.setCustomProperty("done", true);
+
+        editor.render(document.body);
       })();
     </script>
   </body>
