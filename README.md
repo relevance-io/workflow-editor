@@ -190,7 +190,7 @@ In `src/styles.scss`:
 | `getNodes()`                                                                 | `DiagramNode[]`               | Get all nodes                                                                                                        |
 | `getEdges()`                                                                 | `Edge[]`                      | Get all edges                                                                                                        |
 | `serialize(includeTypes?: boolean)`                                          | `string`                      | Serialize diagram to JSON string. Includes node type definitions by default                                          |
-| `serializeNodes()`                                                           | `{ nodes, edges }`            | Serialize only the nodes and edges (no type definitions)                                                             |
+| `serializeNodes()`                                                           | `{ nodes: SerializedNode[], edges: SerializedEdge[] }` | Serialize only the nodes and edges (no type definitions)            |
 | `serializeTypes()`                                                           | `SerializedNodeType[]`        | Serialize only the registered node type definitions                                                                  |
 | `deserialize(json: string \| SerializedDiagram)`                             | `Promise<DiagramEditor>`      | Restore diagram from JSON. Re-registers node types if present in the data                                            |
 | `render(container: HTMLElement)`                                             | `Promise<DiagramEditor>`      | Render a headless editor into a DOM container                                                                        |
@@ -218,8 +218,8 @@ All node classes extend `DiagramNode` and share the following properties and met
 | `id`                                                                       | `string \| null`      | Unique identifier                                          |
 | `x`                                                                        | `number \| undefined` | X position on canvas (undefined in headless mode if unset) |
 | `y`                                                                        | `number \| undefined` | Y position on canvas (undefined in headless mode if unset) |
-| `width`                                                                    | `number`              | Width of the node                                          |
-| `height`                                                                   | `number`              | Height of the node                                         |
+| `width`                                                                    | `number`              | Width of the node (read-only)                              |
+| `height`                                                                   | `number`              | Height of the node (read-only)                             |
 | `label`                                                                    | `string`              | Display label                                              |
 | `labelColor`                                                               | `string`              | Label text color                                           |
 | `labelFontSize`                                                            | `number`              | Label font size (%)                                        |
@@ -228,11 +228,9 @@ All node classes extend `DiagramNode` and share the following properties and met
 | `backgroundColor`                                                          | `string`              | Fill color                                                 |
 | `borderColor`                                                              | `string`              | Border color                                               |
 | `borderWidth`                                                              | `number`              | Border width in pixels                                     |
-| `imageUrl`                                                                 | `string`              | URL of an icon/image to display                            |
+| `imageUrl`                                                                 | `string`              | URL or data URI of an icon/image to display                |
 | `imageWidth`                                                               | `number`              | Image width in pixels                                      |
 | `imageHeight`                                                              | `number`              | Image height in pixels                                     |
-| `status`                                                                   | `string`              | Arbitrary status string                                    |
-| `priority`                                                                 | `number`              | Arbitrary priority number                                  |
 | `moveTo(x: number, y: number)`                                             | `DiagramNode`         | Move node to absolute position                             |
 | `moveBy(dx: number, dy: number)`                                           | `DiagramNode`         | Move node by relative offset                               |
 | `toFront()`                                                                | `DiagramNode`         | Bring node to front                                        |
@@ -278,16 +276,18 @@ All node classes extend `DiagramNode` and share the following properties and met
 ```typescript
 // A registered node type entry in serialized data.
 // Built-in types are serialized as plain strings (their nodeClass).
-// Custom types include their full definition.
+// Custom types include their full definition. renderFn is never serialized —
+// re-register the type with the same renderFn after import and it will be
+// preserved automatically.
 type SerializedNodeType =
     | string
     | {
           nodeClass: string;
-          name?: string; // friendly display name
-          baseClass: string; // nodeClass of the base shape
+          name?: string;           // friendly display name
+          baseClass: string;       // nodeClass of the base shape
           defaultOptions: NodeOptions;
-          schema: Schema;
-          // note: renderFn is never serialized
+          schema: Schema;          // serialize/deserialize/onChange fields are stripped
+          visibleProps?: BuiltInNodeProp[];
       };
 
 interface SerializedDiagram {
@@ -334,26 +334,35 @@ import { DiagramNode, RectangleNode } from "@relevance/workflow-editor";
 
 const TaskNode = (DiagramNode as any).define(
     RectangleNode,
-    // Default options
-    { label: "New Task", backgroundColor: "#f0f8ff" },
-    // Schema
     {
-        assignee: { label: "Assignee", type: "text", default: "" },
-        effort: { label: "Effort", type: "number", default: 1, min: 1, max: 10 },
-        done: { label: "Done", type: "boolean", default: false },
-        priority: {
-            label: "Priority",
-            type: "choice",
-            default: "medium",
-            choices: { low: "Low", medium: "Medium", high: "High" },
+        // Default options applied to every new instance
+        defaults: { label: "New Task", backgroundColor: "#f0f8ff" },
+
+        // Schema defines custom properties shown in the properties panel
+        schema: {
+            assignee: { label: "Assignee", type: "text", default: "" },
+            effort: { label: "Effort", type: "number", default: 1, min: 1, max: 10 },
+            done: { label: "Done", type: "boolean", default: false },
+            priority: {
+                label: "Priority",
+                type: "choice",
+                default: "medium",
+                choices: { low: "Low", medium: "Medium", high: "High" },
+            },
         },
-    },
-    // Render function — called when custom props change.
-    // Not serialized; re-register with the same renderFn after import
-    // and it will be preserved automatically.
-    (node) => {
-        node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
-        node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
+
+        // Render function — called when custom props change.
+        // Not serialized; re-register with the same renderFn after import
+        // and it will be preserved automatically.
+        renderFn: (node) => {
+            node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
+            node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
+        },
+
+        // Optional: restrict which built-in props appear in the properties panel.
+        // Omit this field entirely to show all built-in props.
+        // Pass an empty array to hide all built-in props.
+        visibleProps: ["label", "backgroundColor", "borderColor"],
     },
 );
 
@@ -366,6 +375,51 @@ await editor.addNode(task);
 
 task.setCustomProperty("done", true);
 ```
+
+#### `DefineOptions`
+
+| Field          | Type                              | Description                                                                                     |
+| -------------- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `defaults`     | `NodeOptions`                     | Default built-in property values applied to every new instance                                  |
+| `schema`       | `Schema`                          | Custom property definitions                                                                     |
+| `renderFn`     | `(node: DiagramNode) => void`     | Called after any custom property changes. Not serialized                                        |
+| `visibleProps` | `BuiltInNodeProp[]`               | Which built-in props appear in the panel. Omit to show all; pass `[]` to hide all              |
+
+#### `BuiltInNodeProp`
+
+The `visibleProps` array accepts any combination of:
+
+```typescript
+type BuiltInNodeProp =
+    | "label"
+    | "labelColor"
+    | "labelFontSize"
+    | "description"
+    | "descriptionColor"
+    | "backgroundColor"
+    | "borderColor"
+    | "imageUrl"
+    | "imageWidth"
+    | "imageHeight";
+```
+
+#### `FieldDefinition`
+
+Each key in `schema` is a `FieldDefinition`:
+
+| Field         | Type                                                              | Description                                              |
+| ------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `label`       | `string`                                                          | Display name in the properties panel                     |
+| `type`        | `'text' \| 'number' \| 'textarea' \| 'boolean' \| 'choice' \| 'color' \| 'object'` | Input type. `object` fields are not shown in the panel and are not synced to the cell |
+| `default`     | `any`                                                             | Initial value                                            |
+| `choices`     | `Record<string, string>`                                          | Options map for `choice` type (`{ value: label }`)       |
+| `min`         | `number`                                                          | Minimum value for `number` type                          |
+| `max`         | `number`                                                          | Maximum value for `number` type                          |
+| `visible`     | `boolean`                                                         | Set to `false` to hide from the properties panel         |
+| `readonly`    | `boolean`                                                         | Renders the field as disabled in the properties panel    |
+| `serialize`   | `(value: any, node: DiagramNode) => any`                         | Transform value before serialization. Not written to JSON|
+| `deserialize` | `(raw: any, node: DiagramNode) => any`                           | Transform value after deserialization. Not written to JSON|
+| `onChange`    | `(node: DiagramNode, newValue: any, oldValue: any) => void`      | Called after the value changes. Not written to JSON      |
 
 ---
 
