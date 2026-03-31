@@ -40,6 +40,8 @@ A lightweight, framework-agnostic diagram editor built on JointJS. Supports vani
 - More keyboard shortcuts
 - Path finding improvements
 - UX Improvements
+    - Improved mobile/tablet UX
+    - Improved context menu
 
 ## Installation
 
