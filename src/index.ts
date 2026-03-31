@@ -35,13 +35,23 @@ export interface ArrowMarker {
 
 export interface FieldDefinition {
   label?: string;
-  type?: 'text' | 'number' | 'textarea' | 'boolean' | 'choice' | 'color' | 'object';
+  type?:
+    | 'text'
+    | 'number'
+    | 'textarea'
+    | 'boolean'
+    | 'choice'
+    | 'color'
+    | 'object';
   default?: any;
   choices?: Record<string, string>;
   min?: number;
   max?: number;
   visible?: boolean;
   readonly?: boolean;
+  serialize?: (value: any, node: DiagramNode) => any;
+  deserialize?: (raw: any, node: DiagramNode) => any;
+  onChange?: (node: DiagramNode, newValue: any, oldValue: any) => void;
 }
 
 export type Schema = Record<string, FieldDefinition>;
@@ -913,6 +923,13 @@ export class DiagramNode extends EventBus {
 
 export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 
+export interface DefineOptions {
+  defaults?: NodeOptions;
+  schema?: Schema;
+  renderFn?: ((node: DiagramNode) => void) | null;
+  visibleProps?: BuiltInNodeProp[];
+}
+
 export type BuiltInNodeProp =
   | 'label'
   | 'labelColor'
@@ -927,16 +944,18 @@ export type BuiltInNodeProp =
 
 (DiagramNode as any).define = function (
   BaseNodeClass: NodeConstructor,
-  defaultOptions: NodeOptions = {},
-  schema: Schema = {},
-  renderFn: ((node: DiagramNode) => void) | null = null,
-  visibleProps?: BuiltInNodeProp[],
+  options: DefineOptions = {},
 ): NodeConstructor {
+  const defaultOptions: NodeOptions = options.defaults ?? {};
+  const schema: Schema = options.schema ?? {};
+  const renderFn: ((node: DiagramNode) => void) | null =
+    options.renderFn ?? null;
+  const visibleProps: BuiltInNodeProp[] | undefined = options.visibleProps;
   class CustomNode extends (BaseNodeClass as any) {
     constructor(options: NodeOptions = {}) {
       super();
-      this.customProps = {};
       this.schema = schema;
+      this.customProps = {};
       this.renderFn = renderFn;
       this._defaultOptions = defaultOptions;
 
@@ -968,6 +987,16 @@ export type BuiltInNodeProp =
             ? options[key]
             : (fieldDef as FieldDefinition).default;
       });
+
+      // Fire onChange for each prop only after all customProps are initialized
+      Object.entries(schema).forEach(([key, fieldDef]) => {
+        const fd = fieldDef as FieldDefinition;
+        fd.onChange?.(
+          this as unknown as DiagramNode,
+          this.customProps[key],
+          undefined,
+        );
+      });
     }
 
     getCustomProperty(key: string): any {
@@ -976,16 +1005,19 @@ export type BuiltInNodeProp =
 
     setCustomProperty(key: string, value: any): void {
       if (!(key in this.schema)) {
-        throw new Error(`Unknown custom property: ${key}`);
+        // silently ignore — may be called before schema is fully initialized
+        return;
       }
-      // 'object' type stores arbitrary data as-is
+      const fieldDef = this.schema[key] as FieldDefinition;
+      const oldValue = this.customProps[key];
       this.customProps[key] = value;
-      if (this.schema[key]?.type !== 'object') {
+      if (fieldDef.type !== 'object') {
         this.cell?.set(`custom_${key}`, value);
       }
       if (this.renderFn) {
-        this.renderFn(this);
+        this.renderFn(this as unknown as DiagramNode);
       }
+      fieldDef.onChange?.(this as unknown as DiagramNode, value, oldValue);
       this.emit('change', this);
     }
 
@@ -1790,6 +1822,22 @@ export class DiagramEditor extends EventBus {
       if (node.renderFn) {
         node.renderFn(node);
       }
+      // Fire onChange for all custom props now that the cell is attached
+      Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
+        (fieldDef as FieldDefinition).onChange?.(
+          node,
+          node.customProps[key],
+          undefined,
+        );
+      });
+      // Fire onChange for all custom props now that the cell is attached
+      Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
+        (fieldDef as FieldDefinition).onChange?.(
+          node,
+          node.customProps[key],
+          undefined,
+        );
+      });
       await this._waitForRender(cell);
       node.on('change', (changedNode: DiagramNode) =>
         this.emit('node:change', changedNode),
@@ -1976,14 +2024,29 @@ export class DiagramEditor extends EventBus {
       const schema = (cls as any).__schema;
       const nodeClass = (cls as any).nodeClass ?? label;
       if (schema) {
+        // Strip function fields (serialize, deserialize, onChange) — they live in
+        // code and must never be written into the JSON export.
+        const safeSchema: Schema = Object.fromEntries(
+          Object.entries(schema as Schema).map(([key, fieldDef]) => {
+            const {
+              serialize: _s,
+              deserialize: _d,
+              onChange: _o,
+              ...rest
+            } = fieldDef as FieldDefinition;
+            return [key, rest];
+          }),
+        );
         const visibleProps = (cls as any).__visibleProps;
         return {
           nodeClass,
           name: (cls as any).__nodeName,
           baseClass: (cls as any).__baseClass,
           defaultOptions: (cls as any).__defaultOptions ?? {},
-          schema,
-          ...(visibleProps !== null && visibleProps !== undefined ? { visibleProps } : {}),
+          schema: safeSchema,
+          ...(visibleProps !== null && visibleProps !== undefined
+            ? { visibleProps }
+            : {}),
         };
       }
       return nodeClass as string;
@@ -2015,7 +2078,14 @@ export class DiagramEditor extends EventBus {
             imageWidth: node.imageWidth,
             imageHeight: node.imageHeight,
           },
-          customProps: { ...node.customProps },
+          customProps: Object.fromEntries(
+            Object.entries(node.customProps).map(([k, v]) => {
+              const fieldDef = (node.schema as Schema)[k] as
+                | FieldDefinition
+                | undefined;
+              return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
+            }),
+          ),
         }),
       );
 
@@ -2061,7 +2131,14 @@ export class DiagramEditor extends EventBus {
         imageWidth: node.imageWidth,
         imageHeight: node.imageHeight,
       },
-      customProps: { ...node.customProps },
+      customProps: Object.fromEntries(
+        Object.entries(node.customProps).map(([k, v]) => {
+          const fieldDef = (node.schema as Schema)[k] as
+            | FieldDefinition
+            | undefined;
+          return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
+        }),
+      ),
     }));
 
     const edges: SerializedEdge[] = [...this._edgeMap.values()].map((edge) => {
@@ -2155,13 +2232,15 @@ export class DiagramEditor extends EventBus {
             }
           }
         } else {
-          // Custom — re-define, preserving any existing renderFn from code
+          // If already registered, preserve the existing definition (which has
+          // live function fields like onChange, serialize, deserialize, renderFn).
           const existing = Object.values(this._registeredNodeTypes).find(
             (cls) => (cls as any).nodeClass === typeData.nodeClass,
           );
-          const existingRenderFn = existing
-            ? ((existing as any).__renderFn ?? null)
-            : null;
+          if (existing) {
+            // Already registered from code — don't overwrite with the stripped import.
+            continue;
+          }
 
           const baseClass =
             builtInShapes.find((t) => t.cls.name === typeData.baseClass)?.cls ??
@@ -2171,24 +2250,13 @@ export class DiagramEditor extends EventBus {
           if (!baseClass) {
             throw new UnknownNodeTypeError(typeData.baseClass);
           }
-          const NodeClass = (DiagramNode as any).define(
-            baseClass,
-            typeData.defaultOptions,
-            typeData.schema,
-            existingRenderFn,
-            (typeData as any).visibleProps ?? undefined,
-          );
+          const NodeClass = (DiagramNode as any).define(baseClass, {
+            defaults: typeData.defaultOptions,
+            schema: typeData.schema,
+            visibleProps: (typeData as any).visibleProps ?? undefined,
+          });
           (NodeClass as any).nodeClass = typeData.nodeClass;
-          const existingLabel = existing
-            ? Object.keys(this._registeredNodeTypes).find(
-                (k) => this._registeredNodeTypes[k] === existing,
-              )
-            : typeData.nodeClass;
-          this.registerNodeType(
-            existingLabel ?? typeData.nodeClass,
-            NodeClass,
-            typeData.name,
-          );
+          this.registerNodeType(typeData.nodeClass, NodeClass, typeData.name);
         }
       }
     }
@@ -2227,6 +2295,26 @@ export class DiagramEditor extends EventBus {
         ...nodeData.customProps,
       });
       node.editor = this;
+
+      // Two-pass custom prop restoration:
+      // Pass 1 — deserialize and set all values silently (no onChange)
+      // Pass 2 — fire onChange for each with the fully-populated customProps
+      const _applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
+        Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
+          const fd = fieldDef as FieldDefinition;
+          if (!(key in raw)) return;
+          const liveValue = fd.deserialize
+            ? fd.deserialize(raw[key], n)
+            : raw[key];
+          n.customProps[key] = liveValue;
+        });
+        Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
+          const fd = fieldDef as FieldDefinition;
+          if (!(key in raw)) return;
+          fd.onChange?.(n, n.customProps[key], undefined);
+        });
+      };
+      _applyCustomProps(node, nodeData.customProps);
 
       if (this._isHeadless) {
         const id = nodeData.id ?? `node-${Math.random().toString(36).slice(2)}`;
@@ -3908,10 +3996,12 @@ export class DiagramEditor extends EventBus {
       visibleProps === null || visibleProps.includes(prop);
 
     const panel2 = this._nodePropertiesPanel;
-    panel2.querySelectorAll<HTMLElement>('[data-builtin-prop]').forEach((el) => {
-      const prop = el.dataset.builtinProp as BuiltInNodeProp;
-      el.style.display = isPropVisible(prop) ? '' : 'none';
-    });
+    panel2
+      .querySelectorAll<HTMLElement>('[data-builtin-prop]')
+      .forEach((el) => {
+        const prop = el.dataset.builtinProp as BuiltInNodeProp;
+        el.style.display = isPropVisible(prop) ? '' : 'none';
+      });
 
     panel.querySelector('.wf-custom-props')?.remove();
     const schema = node.getSchema?.() ?? {};
@@ -3925,7 +4015,10 @@ export class DiagramEditor extends EventBus {
 
     Object.entries(schema).forEach(([key, fieldDef]) => {
       const fieldDefinition = fieldDef as FieldDefinition;
-      if (fieldDefinition.visible === false || fieldDefinition.type === 'object') {
+      if (
+        fieldDefinition.visible === false ||
+        fieldDefinition.type === 'object'
+      ) {
         return;
       }
 

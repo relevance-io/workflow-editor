@@ -23,13 +23,36 @@
         const ICON_UNDONE = "https://upload.wikimedia.org/wikipedia/commons/5/57/Check_mark_%28blue%29.svg";
         const ICON_DONE = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Eo_circle_green_checkmark.svg/960px-Eo_circle_green_checkmark.svg.png?_=20200417132424";
 
-        const TaskNode = DiagramNode.define(
-          RectangleNode,
-          { label: "New Task", backgroundColor: "#f0f8ff", imageUrl: ICON_UNDONE, imageWidth: 20, imageHeight: 20 },
-          {
-            assignee: { label: "Assignee", type: "text", default: "" },
+        const TaskNode = DiagramNode.define(RectangleNode, {
+          defaults: { label: "New Task", backgroundColor: "#f0f8ff", imageUrl: ICON_UNDONE, imageWidth: 20, imageHeight: 20 },
+          schema: {
+            summary: {
+              label: "Summary",
+              type: "text",
+              default: "",
+              onChange: (node, val) => {
+                node.label = val;
+              },
+            },
+            assignee: {
+              label: "Assignee",
+              type: "text",
+              default: "",
+              onChange: (node, val) => {
+                node.description = val ? `@${val}` : "";
+              },
+            },
             effort: { label: "Effort", type: "number", default: 1, min: 1, max: 10 },
-            done: { label: "Done", type: "boolean", default: false },
+            done: {
+              label: "Done",
+              type: "boolean",
+              default: false,
+              onChange: (node, val) => {
+                node.backgroundColor = val ? "#d4edda" : "#f0f8ff";
+                node.borderColor = val ? "#28a745" : "#adb5bd";
+                node.imageUrl = val ? ICON_DONE : ICON_UNDONE;
+              },
+            },
             mode: {
               label: "Mode",
               type: "choice",
@@ -37,27 +60,22 @@
               choices: { auto: "Automatic", manual: "Manual" },
             },
             note: { label: "Note", type: "textarea", default: "" },
-            accent: { label: "Accent", type: "color", default: "#3498db" },
           },
-          (node) => {
-            const done = node.getCustomProperty("done");
-            node.backgroundColor = done ? "#d4edda" : "#f0f8ff";
-            node.borderColor = done ? "#28a745" : "#adb5bd";
-            node.imageUrl = done ? ICON_DONE : ICON_UNDONE;
-          },
-          ["label", "description"],
-        );
+          visibleProps: [],
+        });
 
         editor.registerNodeType("Task", TaskNode);
 
         const start = await editor.addNode(new EllipseNode({ label: "START" }));
         const process = await editor.addNode(new RectangleNode({ label: "PROCESS" }));
-        const task = await editor.addNode(new TaskNode({ label: "My Task", assignee: "Alice", effort: 3 }));
+        const task1 = await editor.addNode(new TaskNode({ summary: "My Task", assignee: "Alice", effort: 3 }));
+        const task2 = await editor.addNode(new TaskNode({ summary: "My Task", assignee: "John", effort: 4 }));
 
         start.connectTo(process);
-        process.connectTo(task);
-        task.connectTo(start);
-        task.setCustomProperty("done", true);
+        process.connectTo(task1);
+        task1.setCustomProperty("done", true);
+        task1.connectTo(task2);
+        task2.connectTo(start);
 
         editor.render(document.body);
       })();
