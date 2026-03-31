@@ -1966,10 +1966,9 @@ export class DiagramEditor extends EventBus {
   }
 
   public removeNode(node: DiagramNode): void {
-    // TODO: Cache the id before removal — node.id reads from cell?.id, which
-    // returns null after cell.remove(), causing _nodeMap.delete(null) to silently fail.
+    const id = node.id ?? (node as any)._headlessId;
     node.remove();
-    this._nodeMap.delete(node.id ?? (node as any)._headlessId);
+    this._nodeMap.delete(id);
     this.emit('node:remove', node);
   }
 
@@ -2290,11 +2289,17 @@ export class DiagramEditor extends EventBus {
   public async deserialize(json: string | SerializedDiagram): Promise<this> {
     // TODO: Wrap JSON.parse in a try/catch and re-throw as a descriptive Error
     // to align with the UnknownNodeTypeError pattern — a raw SyntaxError gives no context.
+    let parsedDiagram: SerializedDiagram;
+    try {
+      parsedDiagram = typeof json === 'string' ? JSON.parse(json) : json;
+    } catch (e) {
+      throw new Error(`Failed to parse diagram JSON: ${(e as Error).message}`);
+    }
     const {
       nodes: nodeDataList,
       edges: edgeDataList,
       nodeTypes,
-    }: SerializedDiagram = typeof json === 'string' ? JSON.parse(json) : json;
+    }: SerializedDiagram = parsedDiagram;
     if (!Array.isArray(nodeDataList)) {
       throw new Error('Invalid diagram file format.');
     }
@@ -2779,8 +2784,6 @@ export class DiagramEditor extends EventBus {
     const fontScale =
       (cell.get('fontSizePercent') || FONT_SIZE_PERCENT_DEFAULT) /
       FONT_SIZE_PERCENT_DEFAULT;
-    // TODO: Consolidate these sequential cell.attr() calls into a single call
-    // to reduce JointJS change events and unnecessary reflows during load/resize.
     cell.attr({
       label: { fontSize: FONT_SIZE_LABEL * fontScale },
       descriptionLabel: { fontSize: FONT_SIZE_DESCRIPTION * fontScale },
