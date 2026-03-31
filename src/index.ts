@@ -35,14 +35,7 @@ export interface ArrowMarker {
 
 export interface FieldDefinition {
   label?: string;
-  type?:
-    | 'text'
-    | 'number'
-    | 'textarea'
-    | 'boolean'
-    | 'choice'
-    | 'color'
-    | 'object';
+  type?: 'text' | 'number' | 'textarea' | 'boolean' | 'choice' | 'color' | 'object';
   default?: any;
   choices?: Record<string, string>;
   min?: number;
@@ -948,9 +941,9 @@ export type BuiltInNodeProp =
 ): NodeConstructor {
   const defaultOptions: NodeOptions = options.defaults ?? {};
   const schema: Schema = options.schema ?? {};
-  const renderFn: ((node: DiagramNode) => void) | null =
-    options.renderFn ?? null;
+  const renderFn: ((node: DiagramNode) => void) | null = options.renderFn ?? null;
   const visibleProps: BuiltInNodeProp[] | undefined = options.visibleProps;
+
   class CustomNode extends (BaseNodeClass as any) {
     constructor(options: NodeOptions = {}) {
       super();
@@ -981,6 +974,7 @@ export type BuiltInNodeProp =
       });
       this._label = merged.label ?? defaultOptions.label ?? '';
 
+      // Pass 1: set all customProps silently
       Object.entries(schema).forEach(([key, fieldDef]) => {
         this.customProps[key] =
           options[key] !== undefined
@@ -988,14 +982,10 @@ export type BuiltInNodeProp =
             : (fieldDef as FieldDefinition).default;
       });
 
-      // Fire onChange for each prop only after all customProps are initialized
+      // Pass 2: fire onChange for each prop after all are initialized
       Object.entries(schema).forEach(([key, fieldDef]) => {
         const fd = fieldDef as FieldDefinition;
-        fd.onChange?.(
-          this as unknown as DiagramNode,
-          this.customProps[key],
-          undefined,
-        );
+        fd.onChange?.(this as unknown as DiagramNode, this.customProps[key], undefined);
       });
     }
 
@@ -1660,9 +1650,6 @@ export class DiagramEditor extends EventBus {
       );
     }
 
-    // Serialize while still headless so the headless branch is used,
-    // then flip the flag before deserializing into the live renderer.
-    // Serialize while still headless, then flip before deserializing
     const serialized = JSON.parse(this.serialize()) as SerializedDiagram;
     this._isHeadless = false;
 
@@ -1776,7 +1763,6 @@ export class DiagramEditor extends EventBus {
       height,
     );
 
-    // const portRadius = this._isMobile() ? 14 : 6;
     const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
     const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
@@ -1822,21 +1808,10 @@ export class DiagramEditor extends EventBus {
       if (node.renderFn) {
         node.renderFn(node);
       }
-      // Fire onChange for all custom props now that the cell is attached
+      // Fire onChange for all custom props after cell is attached and
+      // builtIns are applied, so onChange always wins over defaults
       Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
-        (fieldDef as FieldDefinition).onChange?.(
-          node,
-          node.customProps[key],
-          undefined,
-        );
-      });
-      // Fire onChange for all custom props now that the cell is attached
-      Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
-        (fieldDef as FieldDefinition).onChange?.(
-          node,
-          node.customProps[key],
-          undefined,
-        );
+        (fieldDef as FieldDefinition).onChange?.(node, node.customProps[key], undefined);
       });
       await this._waitForRender(cell);
       node.on('change', (changedNode: DiagramNode) =>
@@ -1973,13 +1948,14 @@ export class DiagramEditor extends EventBus {
       return this;
     }
 
+    const clearance = this.clearanceUnits * this.gridSize;
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setGraph({
       rankdir: 'TB',
-      ranksep: 60,
-      nodesep: 40,
-      marginx: 40,
-      marginy: 40,
+      ranksep: clearance * 2,
+      nodesep: clearance * 2,
+      marginx: clearance,
+      marginy: clearance,
     });
     dagreGraph.setDefaultEdgeLabel(() => ({}));
 
@@ -2024,16 +2000,10 @@ export class DiagramEditor extends EventBus {
       const schema = (cls as any).__schema;
       const nodeClass = (cls as any).nodeClass ?? label;
       if (schema) {
-        // Strip function fields (serialize, deserialize, onChange) — they live in
-        // code and must never be written into the JSON export.
+        // Strip function fields — they live in code and must never be written into JSON
         const safeSchema: Schema = Object.fromEntries(
           Object.entries(schema as Schema).map(([key, fieldDef]) => {
-            const {
-              serialize: _s,
-              deserialize: _d,
-              onChange: _o,
-              ...rest
-            } = fieldDef as FieldDefinition;
+            const { serialize: _s, deserialize: _d, onChange: _o, ...rest } = fieldDef as FieldDefinition;
             return [key, rest];
           }),
         );
@@ -2044,9 +2014,7 @@ export class DiagramEditor extends EventBus {
           baseClass: (cls as any).__baseClass,
           defaultOptions: (cls as any).__defaultOptions ?? {},
           schema: safeSchema,
-          ...(visibleProps !== null && visibleProps !== undefined
-            ? { visibleProps }
-            : {}),
+          ...(visibleProps !== null && visibleProps !== undefined ? { visibleProps } : {}),
         };
       }
       return nodeClass as string;
@@ -2080,9 +2048,7 @@ export class DiagramEditor extends EventBus {
           },
           customProps: Object.fromEntries(
             Object.entries(node.customProps).map(([k, v]) => {
-              const fieldDef = (node.schema as Schema)[k] as
-                | FieldDefinition
-                | undefined;
+              const fieldDef = (node.schema as Schema)[k] as FieldDefinition | undefined;
               return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
             }),
           ),
@@ -2133,9 +2099,7 @@ export class DiagramEditor extends EventBus {
       },
       customProps: Object.fromEntries(
         Object.entries(node.customProps).map(([k, v]) => {
-          const fieldDef = (node.schema as Schema)[k] as
-            | FieldDefinition
-            | undefined;
+          const fieldDef = (node.schema as Schema)[k] as FieldDefinition | undefined;
           return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
         }),
       ),
@@ -2193,14 +2157,11 @@ export class DiagramEditor extends EventBus {
       throw new Error('Invalid diagram file format.');
     }
 
-    // Re-register node types if present in the import
     if (nodeTypes != null && nodeTypes.length > 0) {
-      // Build a set of nodeClass strings in the import
       const importedKeys = new Set(
         nodeTypes.map((t) => (typeof t === 'string' ? t : t.nodeClass)),
       );
 
-      // Remove any currently registered types not in the import
       for (const key of Object.keys(this._registeredNodeTypes)) {
         const cls = this._registeredNodeTypes[key];
         const nodeClass = (cls as any).nodeClass;
@@ -2219,9 +2180,7 @@ export class DiagramEditor extends EventBus {
 
       for (const typeData of nodeTypes) {
         if (typeof typeData === 'string') {
-          // Built-in — register if not already registered, reusing existing label if present
           const typeInfo = builtInShapes.find((t) => t.cls.name === typeData);
-
           const cls = typeInfo?.cls;
           if (cls) {
             const existingEntry = Object.entries(
@@ -2232,13 +2191,11 @@ export class DiagramEditor extends EventBus {
             }
           }
         } else {
-          // If already registered, preserve the existing definition (which has
-          // live function fields like onChange, serialize, deserialize, renderFn).
+          // If already registered from code, preserve it — don't overwrite with stripped import
           const existing = Object.values(this._registeredNodeTypes).find(
             (cls) => (cls as any).nodeClass === typeData.nodeClass,
           );
           if (existing) {
-            // Already registered from code — don't overwrite with the stripped import.
             continue;
           }
 
@@ -2298,14 +2255,12 @@ export class DiagramEditor extends EventBus {
 
       // Two-pass custom prop restoration:
       // Pass 1 — deserialize and set all values silently (no onChange)
-      // Pass 2 — fire onChange for each with the fully-populated customProps
-      const _applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
+      // Pass 2 — fire onChange only after all props are populated
+      const applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
           const fd = fieldDef as FieldDefinition;
           if (!(key in raw)) return;
-          const liveValue = fd.deserialize
-            ? fd.deserialize(raw[key], n)
-            : raw[key];
+          const liveValue = fd.deserialize ? fd.deserialize(raw[key], n) : raw[key];
           n.customProps[key] = liveValue;
         });
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
@@ -2314,7 +2269,7 @@ export class DiagramEditor extends EventBus {
           fd.onChange?.(n, n.customProps[key], undefined);
         });
       };
-      _applyCustomProps(node, nodeData.customProps);
+      applyCustomProps(node, nodeData.customProps);
 
       if (this._isHeadless) {
         const id = nodeData.id ?? `node-${Math.random().toString(36).slice(2)}`;
@@ -2332,7 +2287,6 @@ export class DiagramEditor extends EventBus {
         continue;
       }
 
-      // const portRadius = this._isMobile() ? 14 : 6;
       const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
       const position: Point = { x: nodeData.x ?? 0, y: nodeData.y ?? 0 };
       const cell = node._buildCell(position, joint.shapes, portRadius);
@@ -2380,6 +2334,11 @@ export class DiagramEditor extends EventBus {
       if (node.renderFn) {
         node.renderFn(node);
       }
+      // Fire onChange after cell is attached and builtIns applied
+      Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
+        (fieldDef as FieldDefinition).onChange?.(node, node.customProps[key], undefined);
+      });
+
       node.on('change', (n: DiagramNode) => this.emit('node:change', n));
       node.on('move', (n: DiagramNode) => this.emit('node:move', n));
 
@@ -3292,6 +3251,9 @@ export class DiagramEditor extends EventBus {
           if (node.renderFn) {
             node.renderFn(node);
           }
+          Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
+            (fieldDef as FieldDefinition).onChange?.(node, node.customProps[key], undefined);
+          });
           await this._waitForRender(cell);
           node.on('change', (n: DiagramNode) => this.emit('node:change', n));
           node.on('move', (n: DiagramNode) => this.emit('node:move', n));
@@ -3995,13 +3957,10 @@ export class DiagramEditor extends EventBus {
     const isPropVisible = (prop: BuiltInNodeProp) =>
       visibleProps === null || visibleProps.includes(prop);
 
-    const panel2 = this._nodePropertiesPanel;
-    panel2
-      .querySelectorAll<HTMLElement>('[data-builtin-prop]')
-      .forEach((el) => {
-        const prop = el.dataset.builtinProp as BuiltInNodeProp;
-        el.style.display = isPropVisible(prop) ? '' : 'none';
-      });
+    panel.querySelectorAll<HTMLElement>('[data-builtin-prop]').forEach((el) => {
+      const prop = el.dataset.builtinProp as BuiltInNodeProp;
+      el.style.display = isPropVisible(prop) ? '' : 'none';
+    });
 
     panel.querySelector('.wf-custom-props')?.remove();
     const schema = node.getSchema?.() ?? {};
@@ -4015,10 +3974,7 @@ export class DiagramEditor extends EventBus {
 
     Object.entries(schema).forEach(([key, fieldDef]) => {
       const fieldDefinition = fieldDef as FieldDefinition;
-      if (
-        fieldDefinition.visible === false ||
-        fieldDefinition.type === 'object'
-      ) {
+      if (fieldDefinition.visible === false || fieldDefinition.type === 'object') {
         return;
       }
 
@@ -4282,7 +4238,6 @@ export class DiagramEditor extends EventBus {
         };
       };
 
-      // Collect port IDs already used as SOURCE on a given element
       const getUsedSourcePortIds = (element: any): Set<string> => {
         const used = new Set<string>();
         this._graph
@@ -4295,7 +4250,6 @@ export class DiagramEditor extends EventBus {
         return used;
       };
 
-      // Collect port IDs already used as TARGET on a given element
       const getUsedTargetPortIds = (element: any): Set<string> => {
         const used = new Set<string>();
         this._graph
@@ -4339,42 +4293,28 @@ export class DiagramEditor extends EventBus {
             angleDiff = 2 * Math.PI - angleDiff;
           }
 
-          // Always track the best unconstrained port (fallback)
           if (angleDiff < bestAngleDiffFallback) {
             bestAngleDiffFallback = angleDiff;
             bestPortIdFallback = port.id;
           }
 
-          // Prefer ports not in the avoid set
           if (!avoidPortIds.has(port.id) && angleDiff < bestAngleDiff) {
             bestAngleDiff = angleDiff;
             bestPortId = port.id;
           }
         });
 
-        // If every port is in the avoid set, fall back to the geometrically best one
         return bestPortId ?? bestPortIdFallback;
       };
 
       const sourceCenter = getCenterOf(sourceCell);
       const targetCenter = getCenterOf(targetCell);
 
-      // For the source end: avoid ports already used as TARGET on sourceCell
-      // (a port used as target shouldn't also be used as source in another direction)
       const sourceAvoid = getUsedTargetPortIds(sourceCell);
-      // For the target end: avoid ports already used as SOURCE on targetCell
       const targetAvoid = getUsedSourcePortIds(targetCell);
 
-      const bestSourcePort = getBestPortFacing(
-        sourceCell,
-        targetCenter,
-        sourceAvoid,
-      );
-      const bestTargetPort = getBestPortFacing(
-        targetCell,
-        sourceCenter,
-        targetAvoid,
-      );
+      const bestSourcePort = getBestPortFacing(sourceCell, targetCenter, sourceAvoid);
+      const bestTargetPort = getBestPortFacing(targetCell, sourceCenter, targetAvoid);
 
       if (link.source().port !== bestSourcePort) {
         link.source({ id: sourceCell.id, port: bestSourcePort });
