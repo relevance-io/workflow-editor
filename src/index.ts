@@ -955,6 +955,8 @@ export type BuiltInNodeProp =
 
       const merged: NodeOptions = { ...defaultOptions, ...options };
 
+      // FIXME: This builtIns array is duplicated verbatim in addNode() and deserialize().
+      // Extract to a module-level BUILT_IN_NODE_PROPS constant.
       const builtIns: (keyof NodeOptions)[] = [
         'label',
         'labelColor',
@@ -975,6 +977,9 @@ export type BuiltInNodeProp =
       });
       this._label = merged.label ?? defaultOptions.label ?? '';
 
+      // FIXME: This two-pass onChange firing pattern is duplicated in addNode(),
+      // deserialize(), and the drop handler. Extract to a shared module-level
+      // fireOnChangeForAllProps(node, schema) helper and call it from all four sites.
       // Pass 1: set all customProps silently
       Object.entries(schema).forEach(([key, fieldDef]) => {
         this.customProps[key] =
@@ -985,6 +990,7 @@ export type BuiltInNodeProp =
 
       // Pass 2: fire onChange for each prop after all are initialized
       Object.entries(schema).forEach(([key, fieldDef]) => {
+        // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
         const fd = fieldDef as FieldDefinition;
         fd.onChange?.(
           this as unknown as DiagramNode,
@@ -1002,13 +1008,14 @@ export type BuiltInNodeProp =
       if (!(key in this.schema)) {
         return;
       }
-      const fieldDef = this.schema[key] as FieldDefinition;
+      // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
+      const fd = this.schema[key] as FieldDefinition;
       const oldValue = this.customProps[key];
       this.customProps[key] = value;
-      if (fieldDef.type !== 'object') {
+      if (fd.type !== 'object') {
         this.cell?.set(`custom_${key}`, value);
       }
-      fieldDef.onChange?.(this as unknown as DiagramNode, value, oldValue);
+      fd.onChange?.(this as unknown as DiagramNode, value, oldValue);
       this.emit('change', this);
     }
 
@@ -1016,6 +1023,10 @@ export type BuiltInNodeProp =
       return this.schema;
     }
 
+    // FIXME: `(this as unknown as DiagramNode)` is repeated throughout this class
+    // because CustomNode extends a dynamically passed base, bypassing strict typing.
+    // Introduce a typed ICustomNode interface that CustomNode satisfies to eliminate
+    // these casts.
     _buildCell(position: Point, jointNamespace: any): any {
       return super._buildCell(position, jointNamespace);
     }
@@ -1463,6 +1474,7 @@ function _buildPolygonCell(
   cell.position(position.x, position.y).resize(width, height);
   cell.attr({
     body: {
+      // FIXME: `p` is too terse given the surrounding context — rename to `point`.
       refPoints: points.map((p) => p.join(',')).join(' '),
       fill: '#ffffff',
       stroke: '#adb5bd',
@@ -1736,6 +1748,8 @@ export class DiagramEditor extends EventBus {
       (node as any)._headlessId = id;
       node.editor = this;
       this._nodeMap.set(id, node);
+      // FIXME: Listener param named `n` here but `changedNode`/`movedNode` below —
+      // standardise on descriptive names throughout.
       node.on('change', (n: DiagramNode) => this.emit('node:change', n));
       node.on('move', (n: DiagramNode) => this.emit('node:move', n));
       this.emit('node:add', node);
@@ -1767,7 +1781,9 @@ export class DiagramEditor extends EventBus {
       height,
     );
 
-    const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
+    // FIXME: Dead conditional — both branches are identical. Remove the ternary
+    // and use the literal 6 directly, or promote portRadius to a configurable field.
+    const portRadius = this._isMobile() ? 6 : 6;
     const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
     const customLabel = (node.constructor as any).__nodeLabel;
@@ -1777,6 +1793,8 @@ export class DiagramEditor extends EventBus {
     node.cell = cell;
     node.editor = this;
 
+    // FIXME: This builtIns array is duplicated verbatim in define() and deserialize().
+    // Extract to a module-level BUILT_IN_NODE_PROPS constant.
     const builtIns: (keyof NodeOptions)[] = [
       'label',
       'labelColor',
@@ -1806,12 +1824,15 @@ export class DiagramEditor extends EventBus {
     this._nodeMap.set(cell.id, node);
     this.clearSelection();
 
+    // FIXME: This async render-wait-resize-listeners sequence is duplicated in the
+    // custom-node and built-in drop handlers. Extract to a _finalizeAddedNode(node, cell)
+    // helper and call it from all three sites.
     const ready = (async () => {
       await this._waitForRender(cell);
       await this._resizeNodeAsync(cell);
 
-      // Fire onChange for all custom props after cell is attached and
-      // builtIns are applied, so onChange always wins over defaults
+      // FIXME: This two-pass onChange firing is duplicated in define(), deserialize(),
+      // and the drop handler. Extract to a shared fireOnChangeForAllProps helper.
       Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
         (fieldDef as FieldDefinition).onChange?.(
           node,
@@ -2048,6 +2069,9 @@ export class DiagramEditor extends EventBus {
     nodes: SerializedNode[];
     edges: SerializedEdge[];
   } {
+    // FIXME: The headless and non-headless paths below produce the same SerializedNode
+    // shape with only the id and nodeClass source differing. Extract a
+    // _serializeNodeProps(node) helper to eliminate the duplicated props/customProps block.
     if (this._isHeadless) {
       const nodes: SerializedNode[] = [...this._nodeMap.values()].map(
         (node) => ({
@@ -2287,6 +2311,7 @@ export class DiagramEditor extends EventBus {
       // Pass 2 — fire onChange only after all props are populated
       const applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
+          // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
           const fd = fieldDef as FieldDefinition;
           if (!(key in raw)) return;
           const liveValue = fd.deserialize
@@ -2295,6 +2320,7 @@ export class DiagramEditor extends EventBus {
           n.customProps[key] = liveValue;
         });
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
+          // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
           const fd = fieldDef as FieldDefinition;
           if (!(key in raw)) return;
           fd.onChange?.(n, n.customProps[key], undefined);
@@ -2312,19 +2338,24 @@ export class DiagramEditor extends EventBus {
           node.y = nodeData.y;
         }
         this._nodeMap.set(id, node);
+        // FIXME: Listener param named `n` — standardise on descriptive names throughout.
         node.on('change', (n: DiagramNode) => this.emit('node:change', n));
         node.on('move', (n: DiagramNode) => this.emit('node:move', n));
         oldIdToNode[nodeData.id] = node;
         continue;
       }
 
-      const portRadius = this._isMobile() ? 6 : 6; // FIXME: need to fix this
+      // FIXME: Dead conditional — both branches are identical. Remove the ternary
+      // and use the literal 6 directly, or promote portRadius to a configurable field.
+      const portRadius = this._isMobile() ? 6 : 6;
       const position: Point = { x: nodeData.x ?? 0, y: nodeData.y ?? 0 };
       const cell = node._buildCell(position, joint.shapes, portRadius);
       cell.attr('label/text', node._label);
       cell.set('nodeClass', nodeData.nodeClass);
       node.cell = cell;
 
+      // FIXME: This builtIns array is duplicated verbatim in define() and addNode().
+      // Extract to a module-level BUILT_IN_NODE_PROPS constant.
       const builtIns: (keyof NodeOptions)[] = [
         'label',
         'labelColor',
@@ -2362,7 +2393,8 @@ export class DiagramEditor extends EventBus {
       );
       this._renderer.updateViews();
 
-      // Fire onChange after cell is attached and builtIns applied
+      // FIXME: This two-pass onChange firing is duplicated in define(), addNode(),
+      // and the drop handler. Extract to a shared fireOnChangeForAllProps helper.
       Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
         (fieldDef as FieldDefinition).onChange?.(
           node,
@@ -2371,6 +2403,7 @@ export class DiagramEditor extends EventBus {
         );
       });
 
+      // FIXME: Listener param named `n` — standardise on descriptive names throughout.
       node.on('change', (n: DiagramNode) => this.emit('node:change', n));
       node.on('move', (n: DiagramNode) => this.emit('node:move', n));
 
@@ -2522,13 +2555,16 @@ export class DiagramEditor extends EventBus {
 
   public _getEdgesForNode(node: DiagramNode): Edge[] {
     if (this._isHeadless) {
-      return this._headlessEdges
-        .filter((e) => e.source === node || e.target === node)
-        .map((e) => {
-          const edge = new Edge(null, e.source, e.target, this);
-          Object.assign(edge, e.props);
-          return edge;
-        });
+      return (
+        this._headlessEdges
+          // FIXME: `e` clashes with the event convention — rename to `headlessEdge`.
+          .filter((e) => e.source === node || e.target === node)
+          .map((e) => {
+            const edge = new Edge(null, e.source, e.target, this);
+            Object.assign(edge, e.props);
+            return edge;
+          })
+      );
     }
     return [...this._edgeMap.values()].filter(
       (edge) => edge.source === node || edge.target === node,
@@ -2651,6 +2687,8 @@ export class DiagramEditor extends EventBus {
     const imageUrl: string = cell.get('imageUrl');
     const shapeType: ShapeType = cell.get('type');
     const descriptionText: string = cell.attr('descriptionLabel/text') || '';
+    // FIXME: imageWidth and imageHeight are stored and retrieved as numbers — parseInt
+    // is unnecessary and coerces a number through string parsing. Remove parseInt.
     const imageWidth: number = parseInt(cell.get('imageWidth') || 32);
     const imageHeight: number = parseInt(cell.get('imageHeight') || 32);
     const padding = 15;
@@ -3119,6 +3157,10 @@ export class DiagramEditor extends EventBus {
     });
   }
 
+  // FIXME: This method is ~250 lines and handles unrelated concerns: export/import,
+  // sidebar collapse, zoom buttons, wheel zoom, context menu, drag-and-drop (two full
+  // drop paths), and image upload. Split into _attachToolbarListeners,
+  // _attachCanvasListeners, and _attachDropListeners.
   private _attachButtonListeners(): void {
     this._exportButton.addEventListener('click', () => {
       try {
@@ -3268,6 +3310,10 @@ export class DiagramEditor extends EventBus {
           y: event.clientY,
         });
 
+        // FIXME: This drop path reimplements addNode() inline — building the cell,
+        // setting attrs, adding to the graph, and running the async render loop manually.
+        // It also bypasses the _findOpenPosition centering logic that addNode() applies.
+        // Refactor to call addNode() with the computed drop coordinates instead.
         const node = new NodeClass();
         const openPosition = this._findOpenPosition(
           dropPosition.x - 70,
@@ -3287,6 +3333,10 @@ export class DiagramEditor extends EventBus {
         this._nodeMap.set(cell.id, node);
         this.clearSelection();
 
+        // FIXME: This async render-wait-resize-listeners sequence is duplicated in
+        // addNode() and the built-in drop handler below. Extract to _finalizeAddedNode.
+        // FIXME: This two-pass onChange firing is duplicated in define(), addNode(),
+        // and deserialize(). Extract to a shared fireOnChangeForAllProps helper.
         (async () => {
           await this._waitForRender(cell);
           await this._resizeNodeAsync(cell);
@@ -3298,6 +3348,7 @@ export class DiagramEditor extends EventBus {
             );
           });
           await this._waitForRender(cell);
+          // FIXME: Listener param named `n` — standardise on descriptive names throughout.
           node.on('change', (n: DiagramNode) => this.emit('node:change', n));
           node.on('move', (n: DiagramNode) => this.emit('node:move', n));
           this._selectItem(node);
@@ -3320,6 +3371,8 @@ export class DiagramEditor extends EventBus {
         y: event.clientY,
       });
 
+      // FIXME: This drop path reimplements addNode() inline — same issue as the
+      // custom-node drop path above. Refactor to call addNode() with drop coordinates.
       const node = new match.cls({ label: label.toUpperCase() });
       const isSquarish = ['square', 'circle', 'diamond'].includes(droppedType);
       const width = isSquarish ? 80 : 140;
@@ -3339,10 +3392,13 @@ export class DiagramEditor extends EventBus {
       this._nodeMap.set(cell.id, node);
       this.clearSelection();
 
+      // FIXME: This async render-wait-resize-listeners sequence is duplicated in
+      // addNode() and the custom-node drop handler above. Extract to _finalizeAddedNode.
       (async () => {
         await this._waitForRender(cell);
         await this._resizeNodeAsync(cell);
         await this._waitForRender(cell);
+        // FIXME: Listener param named `n` — standardise on descriptive names throughout.
         node.on('change', (n: DiagramNode) => this.emit('node:change', n));
         node.on('move', (n: DiagramNode) => this.emit('node:move', n));
         this._selectItem(node);
@@ -4149,6 +4205,9 @@ export class DiagramEditor extends EventBus {
     setField('description', edge.description);
   }
 
+  // FIXME: _toggleSidebar duplicates the icon rotation and collapsed-label DOM
+  // operations from _setSidebarCollapsed instead of delegating to it. Consolidate
+  // so _toggleSidebar calls _setSidebarCollapsed(sidebar, !isCurrentlyCollapsed).
   private _toggleSidebar(sidebar: HTMLElement): void {
     const isLeft = sidebar === this._leftSidebar;
     const icon = isLeft ? this._leftCollapseIcon : this._rightCollapseIcon;
@@ -4297,6 +4356,7 @@ export class DiagramEditor extends EventBus {
         const used = new Set<string>();
         this._graph
           .getConnectedLinks(element, { outbound: true })
+          // FIXME: `l` is opaque — rename to `connectedLink`.
           .forEach((l: any) => {
             if (l.id === link.id) return;
             const portId = l.source()?.port;
@@ -4309,6 +4369,7 @@ export class DiagramEditor extends EventBus {
         const used = new Set<string>();
         this._graph
           .getConnectedLinks(element, { inbound: true })
+          // FIXME: `l` is opaque — rename to `connectedLink`.
           .forEach((l: any) => {
             if (l.id === link.id) return;
             const portId = l.target()?.port;
@@ -4407,6 +4468,9 @@ export class DiagramEditor extends EventBus {
     this._renderer.updateViews();
   }
 
+  // FIXME: _isMobile() calls window.matchMedia(...) on every invocation with no caching.
+  // It is called on every pointer event, render step, and sidebar toggle. Cache the
+  // MediaQueryList as a private field and read .matches from it instead.
   private _isMobile(): boolean {
     return window.matchMedia('(pointer:coarse) and (max-width:767px)').matches;
   }
