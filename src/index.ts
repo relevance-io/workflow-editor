@@ -35,7 +35,7 @@ export interface ArrowMarker {
 
 export interface FieldDefinition {
   label?: string;
-  type?: 'text' | 'number' | 'textarea' | 'boolean' | 'choice' | 'color';
+  type?: 'text' | 'number' | 'textarea' | 'boolean' | 'choice' | 'color' | 'object';
   default?: any;
   choices?: Record<string, string>;
   min?: number;
@@ -81,6 +81,7 @@ export type SerializedNodeType =
       baseClass: string;
       defaultOptions: NodeOptions;
       schema: Schema;
+      visibleProps?: BuiltInNodeProp[];
     };
 
 export interface SerializedDiagram {
@@ -912,11 +913,24 @@ export class DiagramNode extends EventBus {
 
 export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
 
+export type BuiltInNodeProp =
+  | 'label'
+  | 'labelColor'
+  | 'labelFontSize'
+  | 'description'
+  | 'descriptionColor'
+  | 'backgroundColor'
+  | 'borderColor'
+  | 'imageUrl'
+  | 'imageWidth'
+  | 'imageHeight';
+
 (DiagramNode as any).define = function (
   BaseNodeClass: NodeConstructor,
   defaultOptions: NodeOptions = {},
   schema: Schema = {},
   renderFn: ((node: DiagramNode) => void) | null = null,
+  visibleProps?: BuiltInNodeProp[],
 ): NodeConstructor {
   class CustomNode extends (BaseNodeClass as any) {
     constructor(options: NodeOptions = {}) {
@@ -964,8 +978,11 @@ export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
       if (!(key in this.schema)) {
         throw new Error(`Unknown custom property: ${key}`);
       }
+      // 'object' type stores arbitrary data as-is
       this.customProps[key] = value;
-      this.cell?.set(`custom_${key}`, value);
+      if (this.schema[key]?.type !== 'object') {
+        this.cell?.set(`custom_${key}`, value);
+      }
       if (this.renderFn) {
         this.renderFn(this);
       }
@@ -985,6 +1002,7 @@ export type NodeConstructor = new (options?: NodeOptions) => DiagramNode;
   (CustomNode as any).__defaultOptions = defaultOptions;
   (CustomNode as any).__schema = schema;
   (CustomNode as any).__baseClass = (BaseNodeClass as any).nodeClass;
+  (CustomNode as any).__visibleProps = visibleProps ?? null;
 
   (CustomNode.prototype as any)._getShapeType = (
     BaseNodeClass.prototype as any
@@ -1958,12 +1976,14 @@ export class DiagramEditor extends EventBus {
       const schema = (cls as any).__schema;
       const nodeClass = (cls as any).nodeClass ?? label;
       if (schema) {
+        const visibleProps = (cls as any).__visibleProps;
         return {
           nodeClass,
           name: (cls as any).__nodeName,
           baseClass: (cls as any).__baseClass,
           defaultOptions: (cls as any).__defaultOptions ?? {},
           schema,
+          ...(visibleProps !== null && visibleProps !== undefined ? { visibleProps } : {}),
         };
       }
       return nodeClass as string;
@@ -2156,6 +2176,7 @@ export class DiagramEditor extends EventBus {
             typeData.defaultOptions,
             typeData.schema,
             existingRenderFn,
+            (typeData as any).visibleProps ?? undefined,
           );
           (NodeClass as any).nodeClass = typeData.nodeClass;
           const existingLabel = existing
@@ -2820,47 +2841,47 @@ export class DiagramEditor extends EventBus {
     );
     panel.style.display = 'none';
     panel.innerHTML = `
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="label">
         <label>Label</label>
         <input type="text" data-prop="label">
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="labelFontSize">
         <label>Font Size (%)</label>
         <input type="number" data-prop="labelFontSize" min="10" max="500">
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="backgroundColor">
         <label>Background Color</label>
         <div class="wf-color-row">
           <input type="color" data-prop="backgroundColor" data-pair="backgroundColorHex">
           <input type="text"  data-prop="backgroundColorHex" data-pair-picker="backgroundColor" placeholder="#FFFFFF">
         </div>
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="borderColor">
         <label>Border Color</label>
         <div class="wf-color-row">
           <input type="color" data-prop="borderColor" data-pair="borderColorHex">
           <input type="text"  data-prop="borderColorHex" data-pair-picker="borderColor" placeholder="#ADB5BD">
         </div>
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="labelColor">
         <label>Label Color</label>
         <div class="wf-color-row">
           <input type="color" data-prop="labelColor" data-pair="labelColorHex">
           <input type="text"  data-prop="labelColorHex" data-pair-picker="labelColor" placeholder="#212529">
         </div>
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="descriptionColor">
         <label>Description Color</label>
         <div class="wf-color-row">
           <input type="color" data-prop="descriptionColor" data-pair="descriptionColorHex">
           <input type="text"  data-prop="descriptionColorHex" data-pair-picker="descriptionColor" placeholder="#6C757D">
         </div>
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="description">
         <label>Description</label>
         <textarea data-prop="description"></textarea>
       </div>
-      <div class="wf-prop-group">
+      <div class="wf-prop-group" data-builtin-prop="imageUrl">
         <label>Image URL</label>
         <div class="wf-image-row">
           <input type="text" data-prop="imageUrl" placeholder="https://...">
@@ -2870,7 +2891,7 @@ export class DiagramEditor extends EventBus {
           <input type="file" data-action="image-file" style="display:none;" accept="image/*">
         </div>
       </div>
-      <div class="wf-prop-row">
+      <div class="wf-prop-row" data-builtin-prop="imageWidth">
         <div class="wf-prop-group">
           <label>Image Width</label>
           <input type="number" data-prop="imageWidth" min="0">
@@ -3881,6 +3902,17 @@ export class DiagramEditor extends EventBus {
     setField('descriptionColor', node.descriptionColor);
     setField('descriptionColorHex', node.descriptionColor);
 
+    const visibleProps: BuiltInNodeProp[] | null =
+      (node.constructor as any).__visibleProps ?? null;
+    const isPropVisible = (prop: BuiltInNodeProp) =>
+      visibleProps === null || visibleProps.includes(prop);
+
+    const panel2 = this._nodePropertiesPanel;
+    panel2.querySelectorAll<HTMLElement>('[data-builtin-prop]').forEach((el) => {
+      const prop = el.dataset.builtinProp as BuiltInNodeProp;
+      el.style.display = isPropVisible(prop) ? '' : 'none';
+    });
+
     panel.querySelector('.wf-custom-props')?.remove();
     const schema = node.getSchema?.() ?? {};
     if (!Object.keys(schema).length) {
@@ -3893,7 +3925,7 @@ export class DiagramEditor extends EventBus {
 
     Object.entries(schema).forEach(([key, fieldDef]) => {
       const fieldDefinition = fieldDef as FieldDefinition;
-      if (fieldDefinition.visible === false) {
+      if (fieldDefinition.visible === false || fieldDefinition.type === 'object') {
         return;
       }
 

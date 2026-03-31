@@ -20,18 +20,15 @@
         const editor = new DiagramEditor();
         editor.registerBuiltInNodes();
 
+        const ICON_UNDONE = "https://upload.wikimedia.org/wikipedia/commons/5/57/Check_mark_%28blue%29.svg";
+        const ICON_DONE = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Eo_circle_green_checkmark.svg/960px-Eo_circle_green_checkmark.svg.png?_=20200417132424";
+
         const TaskNode = DiagramNode.define(
           RectangleNode,
-          { label: "New Task", backgroundColor: "#f0f8ff" },
+          { label: "New Task", backgroundColor: "#f0f8ff", imageUrl: ICON_UNDONE, imageWidth: 20, imageHeight: 20 },
           {
             assignee: { label: "Assignee", type: "text", default: "" },
-            effort: {
-              label: "Effort",
-              type: "number",
-              default: 1,
-              min: 1,
-              max: 10,
-            },
+            effort: { label: "Effort", type: "number", default: 1, min: 1, max: 10 },
             done: { label: "Done", type: "boolean", default: false },
             mode: {
               label: "Mode",
@@ -43,11 +40,14 @@
             accent: { label: "Accent", type: "color", default: "#3498db" },
           },
           (node) => {
-            // update the node's appearance when the 'done' flag changes
-            node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
-            node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
+            const done = node.getCustomProperty("done");
+            node.backgroundColor = done ? "#d4edda" : "#f0f8ff";
+            node.borderColor = done ? "#28a745" : "#adb5bd";
+            node.imageUrl = done ? ICON_DONE : ICON_UNDONE;
           },
+          ["label", "description"],
         );
+
         editor.registerNodeType("Task", TaskNode);
 
         const start = await editor.addNode(new EllipseNode({ label: "START" }));
