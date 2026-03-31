@@ -990,9 +990,8 @@ export type BuiltInNodeProp =
 
       // Pass 2: fire onChange for each prop after all are initialized
       Object.entries(schema).forEach(([key, fieldDef]) => {
-        // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
-        const fd = fieldDef as FieldDefinition;
-        fd.onChange?.(
+        const fieldDefinition = fieldDef as FieldDefinition;
+        fieldDefinition.onChange?.(
           this as unknown as DiagramNode,
           this.customProps[key],
           undefined,
@@ -1008,14 +1007,17 @@ export type BuiltInNodeProp =
       if (!(key in this.schema)) {
         return;
       }
-      // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
-      const fd = this.schema[key] as FieldDefinition;
+      const fieldDefinition = this.schema[key] as FieldDefinition;
       const oldValue = this.customProps[key];
       this.customProps[key] = value;
-      if (fd.type !== 'object') {
+      if (fieldDefinition.type !== 'object') {
         this.cell?.set(`custom_${key}`, value);
       }
-      fd.onChange?.(this as unknown as DiagramNode, value, oldValue);
+      fieldDefinition.onChange?.(
+        this as unknown as DiagramNode,
+        value,
+        oldValue,
+      );
       this.emit('change', this);
     }
 
@@ -1474,8 +1476,7 @@ function _buildPolygonCell(
   cell.position(position.x, position.y).resize(width, height);
   cell.attr({
     body: {
-      // FIXME: `p` is too terse given the surrounding context — rename to `point`.
-      refPoints: points.map((p) => p.join(',')).join(' '),
+      refPoints: points.map((point) => point.join(',')).join(' '),
       fill: '#ffffff',
       stroke: '#adb5bd',
       strokeWidth: 2,
@@ -1748,10 +1749,12 @@ export class DiagramEditor extends EventBus {
       (node as any)._headlessId = id;
       node.editor = this;
       this._nodeMap.set(id, node);
-      // FIXME: Listener param named `n` here but `changedNode`/`movedNode` below —
-      // standardise on descriptive names throughout.
-      node.on('change', (n: DiagramNode) => this.emit('node:change', n));
-      node.on('move', (n: DiagramNode) => this.emit('node:move', n));
+      node.on('change', (changedNode: DiagramNode) =>
+        this.emit('node:change', changedNode),
+      );
+      node.on('move', (movedNode: DiagramNode) =>
+        this.emit('node:move', movedNode),
+      );
       this.emit('node:add', node);
       return Promise.resolve(node);
     }
@@ -1781,9 +1784,7 @@ export class DiagramEditor extends EventBus {
       height,
     );
 
-    // FIXME: Dead conditional — both branches are identical. Remove the ternary
-    // and use the literal 6 directly, or promote portRadius to a configurable field.
-    const portRadius = this._isMobile() ? 6 : 6;
+    const portRadius = 6;
     const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
     const customLabel = (node.constructor as any).__nodeLabel;
@@ -2104,23 +2105,25 @@ export class DiagramEditor extends EventBus {
         }),
       );
 
-      const edges: SerializedEdge[] = this._headlessEdges.map((e) => ({
-        sourceId: (e.source as any)._headlessId,
-        targetId: (e.target as any)._headlessId,
-        sourcePort: e.props.sourcePort ?? null,
-        targetPort: e.props.targetPort ?? null,
-        label: e.props.label ?? '',
-        labelColor: e.props.labelColor ?? '#333333',
-        labelFontSize: e.props.labelFontSize ?? 100,
-        lineColor: e.props.lineColor ?? '#495057',
-        lineWidth: e.props.lineWidth ?? 2,
-        lineStyle: e.props.lineStyle ?? 'solid',
-        sourceArrow: e.props.sourceArrow ?? 'none',
-        targetArrow: e.props.targetArrow ?? 'classic',
-        connectorType: e.props.connectorType ?? 'elbow',
-        description: e.props.description ?? '',
-        vertices: e.props.vertices ?? [],
-      }));
+      const edges: SerializedEdge[] = this._headlessEdges.map(
+        (headlessEdge) => ({
+          sourceId: (headlessEdge.source as any)._headlessId,
+          targetId: (headlessEdge.target as any)._headlessId,
+          sourcePort: headlessEdge.props.sourcePort ?? null,
+          targetPort: headlessEdge.props.targetPort ?? null,
+          label: headlessEdge.props.label ?? '',
+          labelColor: headlessEdge.props.labelColor ?? '#333333',
+          labelFontSize: headlessEdge.props.labelFontSize ?? 100,
+          lineColor: headlessEdge.props.lineColor ?? '#495057',
+          lineWidth: headlessEdge.props.lineWidth ?? 2,
+          lineStyle: headlessEdge.props.lineStyle ?? 'solid',
+          sourceArrow: headlessEdge.props.sourceArrow ?? 'none',
+          targetArrow: headlessEdge.props.targetArrow ?? 'classic',
+          connectorType: headlessEdge.props.connectorType ?? 'elbow',
+          description: headlessEdge.props.description ?? '',
+          vertices: headlessEdge.props.vertices ?? [],
+        }),
+      );
 
       return { nodes, edges };
     }
@@ -2311,19 +2314,17 @@ export class DiagramEditor extends EventBus {
       // Pass 2 — fire onChange only after all props are populated
       const applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
-          // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
-          const fd = fieldDef as FieldDefinition;
+          const fieldDefinition = fieldDef as FieldDefinition;
           if (!(key in raw)) return;
-          const liveValue = fd.deserialize
-            ? fd.deserialize(raw[key], n)
+          const liveValue = fieldDefinition.deserialize
+            ? fieldDefinition.deserialize(raw[key], n)
             : raw[key];
           n.customProps[key] = liveValue;
         });
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
-          // FIXME: `fd` is inconsistent with `fieldDef` used everywhere else in the file.
-          const fd = fieldDef as FieldDefinition;
+          const fieldDefinition = fieldDef as FieldDefinition;
           if (!(key in raw)) return;
-          fd.onChange?.(n, n.customProps[key], undefined);
+          fieldDefinition.onChange?.(n, n.customProps[key], undefined);
         });
       };
       applyCustomProps(node, nodeData.customProps);
@@ -2338,16 +2339,17 @@ export class DiagramEditor extends EventBus {
           node.y = nodeData.y;
         }
         this._nodeMap.set(id, node);
-        // FIXME: Listener param named `n` — standardise on descriptive names throughout.
-        node.on('change', (n: DiagramNode) => this.emit('node:change', n));
-        node.on('move', (n: DiagramNode) => this.emit('node:move', n));
+        node.on('change', (changedNode: DiagramNode) =>
+          this.emit('node:change', changedNode),
+        );
+        node.on('move', (movedNode: DiagramNode) =>
+          this.emit('node:move', movedNode),
+        );
         oldIdToNode[nodeData.id] = node;
         continue;
       }
 
-      // FIXME: Dead conditional — both branches are identical. Remove the ternary
-      // and use the literal 6 directly, or promote portRadius to a configurable field.
-      const portRadius = this._isMobile() ? 6 : 6;
+      const portRadius = 6;
       const position: Point = { x: nodeData.x ?? 0, y: nodeData.y ?? 0 };
       const cell = node._buildCell(position, joint.shapes, portRadius);
       cell.attr('label/text', node._label);
@@ -2403,9 +2405,12 @@ export class DiagramEditor extends EventBus {
         );
       });
 
-      // FIXME: Listener param named `n` — standardise on descriptive names throughout.
-      node.on('change', (n: DiagramNode) => this.emit('node:change', n));
-      node.on('move', (n: DiagramNode) => this.emit('node:move', n));
+      node.on('change', (changedNode: DiagramNode) =>
+        this.emit('node:change', changedNode),
+      );
+      node.on('move', (movedNode: DiagramNode) =>
+        this.emit('node:move', movedNode),
+      );
 
       oldIdToNode[nodeData.id] = node;
     }
@@ -2555,16 +2560,21 @@ export class DiagramEditor extends EventBus {
 
   public _getEdgesForNode(node: DiagramNode): Edge[] {
     if (this._isHeadless) {
-      return (
-        this._headlessEdges
-          // FIXME: `e` clashes with the event convention — rename to `headlessEdge`.
-          .filter((e) => e.source === node || e.target === node)
-          .map((e) => {
-            const edge = new Edge(null, e.source, e.target, this);
-            Object.assign(edge, e.props);
-            return edge;
-          })
-      );
+      return this._headlessEdges
+        .filter(
+          (headlessEdge) =>
+            headlessEdge.source === node || headlessEdge.target === node,
+        )
+        .map((headlessEdge) => {
+          const edge = new Edge(
+            null,
+            headlessEdge.source,
+            headlessEdge.target,
+            this,
+          );
+          Object.assign(edge, headlessEdge.props);
+          return edge;
+        });
     }
     return [...this._edgeMap.values()].filter(
       (edge) => edge.source === node || edge.target === node,
@@ -2580,9 +2590,9 @@ export class DiagramEditor extends EventBus {
     const alreadyConnected = (src: DiagramNode, tgt: DiagramNode) => {
       if (this._isHeadless) {
         return this._headlessEdges.some(
-          (e) =>
-            (e.source === src && e.target === tgt) ||
-            (e.source === tgt && e.target === src),
+          (headlessEdge) =>
+            (headlessEdge.source === src && headlessEdge.target === tgt) ||
+            (headlessEdge.source === tgt && headlessEdge.target === src),
         );
       }
       return [...this._edgeMap.values()].some(
@@ -2608,7 +2618,9 @@ export class DiagramEditor extends EventBus {
           targetPort: targetPortIndex,
         },
       });
-      edge.on('change', (e: Edge) => this.emit('edge:change', e));
+      edge.on('change', (changedEdge: Edge) =>
+        this.emit('edge:change', changedEdge),
+      );
       this.emit('edge:add', edge);
       return edge;
     }
@@ -2655,7 +2667,9 @@ export class DiagramEditor extends EventBus {
 
     const edge = new Edge(link, sourceNode, targetNode, this);
     this._edgeMap.set(link.id.toString(), edge);
-    edge.on('change', (e: Edge) => this.emit('edge:change', e));
+    edge.on('change', (changedEdge: Edge) =>
+      this.emit('edge:change', changedEdge),
+    );
     this.emit('edge:add', edge);
     return edge;
   }
@@ -2687,10 +2701,8 @@ export class DiagramEditor extends EventBus {
     const imageUrl: string = cell.get('imageUrl');
     const shapeType: ShapeType = cell.get('type');
     const descriptionText: string = cell.attr('descriptionLabel/text') || '';
-    // FIXME: imageWidth and imageHeight are stored and retrieved as numbers — parseInt
-    // is unnecessary and coerces a number through string parsing. Remove parseInt.
-    const imageWidth: number = parseInt(cell.get('imageWidth') || 32);
-    const imageHeight: number = parseInt(cell.get('imageHeight') || 32);
+    const imageWidth: number = cell.get('imageWidth') || 32;
+    const imageHeight: number = cell.get('imageHeight') || 32;
     const padding = 15;
     const imageSpacing = imageUrl ? 10 : 0;
 
@@ -3321,7 +3333,8 @@ export class DiagramEditor extends EventBus {
           140,
           50,
         );
-        const cell = node._buildCell(openPosition, joint.shapes);
+        const portRadius = 6;
+        const cell = node._buildCell(openPosition, joint.shapes, portRadius);
         cell.attr('label/text', node._label);
         node.cell = cell;
         node.editor = this;
@@ -3348,9 +3361,12 @@ export class DiagramEditor extends EventBus {
             );
           });
           await this._waitForRender(cell);
-          // FIXME: Listener param named `n` — standardise on descriptive names throughout.
-          node.on('change', (n: DiagramNode) => this.emit('node:change', n));
-          node.on('move', (n: DiagramNode) => this.emit('node:move', n));
+          node.on('change', (changedNode: DiagramNode) =>
+            this.emit('node:change', changedNode),
+          );
+          node.on('move', (movedNode: DiagramNode) =>
+            this.emit('node:move', movedNode),
+          );
           this._selectItem(node);
         })();
 
@@ -3384,6 +3400,7 @@ export class DiagramEditor extends EventBus {
         width,
         height,
       );
+      const portRadius = 6;
       const cell = node._buildCell(openPosition, joint.shapes);
       cell.attr('label/text', node._label);
       node.cell = cell;
@@ -3398,9 +3415,12 @@ export class DiagramEditor extends EventBus {
         await this._waitForRender(cell);
         await this._resizeNodeAsync(cell);
         await this._waitForRender(cell);
-        // FIXME: Listener param named `n` — standardise on descriptive names throughout.
-        node.on('change', (n: DiagramNode) => this.emit('node:change', n));
-        node.on('move', (n: DiagramNode) => this.emit('node:move', n));
+        node.on('change', (changedNode: DiagramNode) =>
+          this.emit('node:change', changedNode),
+        );
+        node.on('move', (movedNode: DiagramNode) =>
+          this.emit('node:move', movedNode),
+        );
         this._selectItem(node);
       })();
 
@@ -3711,7 +3731,9 @@ export class DiagramEditor extends EventBus {
 
       const edge = new Edge(link, sourceNode, targetNode, this);
       this._edgeMap.set(link.id, edge);
-      edge.on('change', (e: Edge) => this.emit('edge:change', e));
+      edge.on('change', (changedEdge: Edge) =>
+        this.emit('edge:change', changedEdge),
+      );
       this.emit('edge:add', edge);
     });
 
@@ -3853,10 +3875,12 @@ export class DiagramEditor extends EventBus {
               await this._waitForRender(clonedCell);
               await this._resizeNodeAsync(clonedCell);
               await this._waitForRender(clonedCell);
-              copy.on('change', (n: DiagramNode) =>
-                this.emit('node:change', n),
+              copy.on('change', (changedNode: DiagramNode) =>
+                this.emit('node:change', changedNode),
               );
-              copy.on('move', (n: DiagramNode) => this.emit('node:move', n));
+              copy.on('move', (movedNode: DiagramNode) =>
+                this.emit('node:move', movedNode),
+              );
               this._selectItem(copy);
             })();
 
@@ -4356,10 +4380,9 @@ export class DiagramEditor extends EventBus {
         const used = new Set<string>();
         this._graph
           .getConnectedLinks(element, { outbound: true })
-          // FIXME: `l` is opaque — rename to `connectedLink`.
-          .forEach((l: any) => {
-            if (l.id === link.id) return;
-            const portId = l.source()?.port;
+          .forEach((connectedLink: any) => {
+            if (connectedLink.id === link.id) return;
+            const portId = connectedLink.source()?.port;
             if (portId) used.add(portId);
           });
         return used;
@@ -4369,10 +4392,9 @@ export class DiagramEditor extends EventBus {
         const used = new Set<string>();
         this._graph
           .getConnectedLinks(element, { inbound: true })
-          // FIXME: `l` is opaque — rename to `connectedLink`.
-          .forEach((l: any) => {
-            if (l.id === link.id) return;
-            const portId = l.target()?.port;
+          .forEach((connectedLink: any) => {
+            if (connectedLink.id === link.id) return;
+            const portId = connectedLink.target()?.port;
             if (portId) used.add(portId);
           });
         return used;
