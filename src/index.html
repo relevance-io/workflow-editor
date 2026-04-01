@@ -61,7 +61,18 @@
         };
 
         const TaskNode = DiagramNode.define(RectangleNode, {
-          defaults: { label: "New Task", backgroundColor: "#f0f8ff", imageUrl: ICON_UNDONE, imageWidth: 20, imageHeight: 20 },
+          defaults: {
+            label: "New Task",
+            backgroundColor: "#f0f8ff",
+            imageUrl: ICON_UNDONE,
+            imageWidth: 20,
+            imageHeight: 20,
+          },
+          onKeyUp: (node, key) => {
+            if (key === " ") {
+              node.setCustomProperty("done", !node.getCustomProperty("done"));
+            }
+          },
           schema: {
             summary: {
               label: "Summary",
@@ -102,9 +113,11 @@
             note: { label: "Note", type: "textarea", default: "" },
           },
           visibleProps: [],
+          editProp: "summary",
         });
 
         editor.registerNodeType("Task", TaskNode);
+        console.log("after register", TaskNode.__onKeyUp);
 
         const start = await editor.addNode(new EllipseNode({ label: "START" }));
         const process = await editor.addNode(new RectangleNode({ label: "PROCESS" }));

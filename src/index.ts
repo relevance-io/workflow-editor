@@ -163,6 +163,7 @@ export type SerializedNodeType =
       defaultOptions: NodeOptions;
       schema: Schema;
       visibleProps?: BuiltInNodeProp[];
+      editProp?: string;
     };
 
 export interface SerializedDiagram {
@@ -253,11 +254,8 @@ export class EventBus {
 // =============================================================
 
 export class PathPoint extends EventBus {
-  // private
   private _edge: any;
   private _pointIndex: number;
-
-  // public
   public id: string;
 
   constructor(parentEdge: any, pointIndex: number) {
@@ -309,7 +307,6 @@ const ARROW_MARKERS: Record<ArrowMarkerName, ArrowMarker | null> = {
 // =============================================================
 
 export class Edge extends EventBus {
-  // private
   private _sourceNode: DiagramNode;
   private _targetNode: DiagramNode;
   private _pathPoints: PathPoint[];
@@ -328,7 +325,6 @@ export class Edge extends EventBus {
   private _targetPort: number | null = null;
   private _description: string = '';
 
-  // public
   public link: any;
   public editor: DiagramEditor;
 
@@ -356,26 +352,18 @@ export class Edge extends EventBus {
     return this._targetNode;
   }
 
-  // label
-
   public get label(): string {
-    if (!this.link) {
-      return this._label;
-    }
+    if (!this.link) return this._label;
     return this.link.label(0)?.attrs?.text?.text || '';
   }
   public set label(value: string) {
     this._label = value;
-    if (this.link) {
-      this._applyLabel(value);
-    }
+    if (this.link) this._applyLabel(value);
     this.emit('change', this);
   }
 
   public get labelColor(): string {
-    if (!this.link) {
-      return this._labelColor;
-    }
+    if (!this.link) return this._labelColor;
     return this.link.label(0)?.attrs?.text?.fill || COLOR_EDGE_LABEL;
   }
   public set labelColor(value: string) {
@@ -388,9 +376,7 @@ export class Edge extends EventBus {
   }
 
   public get labelFontSize(): number {
-    if (!this.link) {
-      return this._labelFontSize;
-    }
+    if (!this.link) return this._labelFontSize;
     return this.link.get('fontSizePercent') || FONT_SIZE_PERCENT_DEFAULT;
   }
   public set labelFontSize(value: number) {
@@ -402,107 +388,72 @@ export class Edge extends EventBus {
     this.emit('change', this);
   }
 
-  // line appearance
-
   public get lineColor(): string {
-    if (!this.link) {
-      return this._lineColor;
-    }
+    if (!this.link) return this._lineColor;
     return this.link.attr('line/stroke') || COLOR_EDGE_LINE;
   }
   public set lineColor(value: string) {
     this._lineColor = value;
-    if (this.link) {
-      this.link.attr('line/stroke', value);
-    }
+    if (this.link) this.link.attr('line/stroke', value);
     this.emit('change', this);
   }
 
   public get lineWidth(): number {
-    if (!this.link) {
-      return this._lineWidth;
-    }
+    if (!this.link) return this._lineWidth;
     return this.link.attr('line/strokeWidth') || 2;
   }
   public set lineWidth(value: number) {
     this._lineWidth = value;
-    if (this.link) {
-      this.link.attr('line/strokeWidth', value);
-    }
+    if (this.link) this.link.attr('line/strokeWidth', value);
     this.emit('change', this);
   }
 
   public get lineStyle(): LineStyle {
-    if (!this.link) {
-      return this._lineStyle;
-    }
+    if (!this.link) return this._lineStyle;
     const dash: string = this.link.attr('line/strokeDasharray') || '';
-    if (dash === '5,5') {
-      return 'dashed';
-    }
-    if (dash === '1,5') {
-      return 'dotted';
-    }
+    if (dash === '5,5') return 'dashed';
+    if (dash === '1,5') return 'dotted';
     return 'solid';
   }
   public set lineStyle(value: LineStyle) {
     this._lineStyle = value;
     if (this.link) {
-      if (value === 'dashed') {
-        this.link.attr('line/strokeDasharray', '5,5');
-      } else if (value === 'dotted') {
+      if (value === 'dashed') this.link.attr('line/strokeDasharray', '5,5');
+      else if (value === 'dotted')
         this.link.attr('line/strokeDasharray', '1,5');
-      } else {
-        this.link.attr('line/strokeDasharray', '');
-      }
+      else this.link.attr('line/strokeDasharray', '');
     }
     this.emit('change', this);
   }
 
-  // arrows
-
   public get sourceArrow(): ArrowMarkerName {
-    if (!this.link) {
-      return this._sourceArrow;
-    }
+    if (!this.link) return this._sourceArrow;
     return this._arrowNameFromDefinition(this.link.attr('line/sourceMarker'));
   }
   public set sourceArrow(value: ArrowMarkerName) {
     this._sourceArrow = value;
-    if (this.link) {
+    if (this.link)
       this.link.attr('line/sourceMarker', ARROW_MARKERS[value] || null);
-    }
     this.emit('change', this);
   }
 
   public get targetArrow(): ArrowMarkerName {
-    if (!this.link) {
-      return this._targetArrow;
-    }
+    if (!this.link) return this._targetArrow;
     return this._arrowNameFromDefinition(this.link.attr('line/targetMarker'));
   }
   public set targetArrow(value: ArrowMarkerName) {
     this._targetArrow = value;
-    if (this.link) {
+    if (this.link)
       this.link.attr('line/targetMarker', ARROW_MARKERS[value] || null);
-    }
     this.emit('change', this);
   }
 
-  // connector routing
-
   public get connectorType(): ConnectorType {
-    if (!this.link) {
-      return this._connectorType;
-    }
+    if (!this.link) return this._connectorType;
     const connector: string = this.link.connector()?.name;
     const router: string = this.link.router()?.name;
-    if (connector === 'smooth') {
-      return 'curved';
-    }
-    if (router === 'normal') {
-      return 'straight';
-    }
+    if (connector === 'smooth') return 'curved';
+    if (router === 'normal') return 'straight';
     return 'elbow';
   }
   public set connectorType(value: ConnectorType) {
@@ -526,51 +477,33 @@ export class Edge extends EventBus {
     this.emit('change', this);
   }
 
-  // port pinning
-
   public get sourcePort(): number | null {
-    if (!this.link) {
-      return this._sourcePort;
-    }
+    if (!this.link) return this._sourcePort;
     return this.link.get('sourcePort') ?? null;
   }
   public set sourcePort(value: number | null) {
     this._sourcePort = value;
-    if (this.link) {
-      this._setPort('source', value);
-    }
+    if (this.link) this._setPort('source', value);
   }
 
   public get targetPort(): number | null {
-    if (!this.link) {
-      return this._targetPort;
-    }
+    if (!this.link) return this._targetPort;
     return this.link.get('targetPort') ?? null;
   }
   public set targetPort(value: number | null) {
     this._targetPort = value;
-    if (this.link) {
-      this._setPort('target', value);
-    }
+    if (this.link) this._setPort('target', value);
   }
 
-  // description
-
   public get description(): string {
-    if (!this.link) {
-      return this._description;
-    }
+    if (!this.link) return this._description;
     return this.link.get('description') || '';
   }
   public set description(value: string) {
     this._description = value;
-    if (this.link) {
-      this.link.set('description', value);
-    }
+    if (this.link) this.link.set('description', value);
     this.emit('change', this);
   }
-
-  // path points
 
   public getPathPoints(): PathPoint[] {
     return [...this._pathPoints];
@@ -584,8 +517,6 @@ export class Edge extends EventBus {
     return point;
   }
 
-  // actions
-
   public select(): this {
     this.editor._selectItem(this);
     return this;
@@ -595,13 +526,9 @@ export class Edge extends EventBus {
     return this;
   }
   public remove(): void {
-    if (this.link) {
-      this.link.remove();
-    }
+    if (this.link) this.link.remove();
     this.emit('remove', this);
   }
-
-  // private helpers
 
   private _applyLabel(text: string): void {
     const fontSize =
@@ -627,15 +554,9 @@ export class Edge extends EventBus {
   private _arrowNameFromDefinition(
     definition: ArrowMarker | null,
   ): ArrowMarkerName {
-    if (!definition) {
-      return 'none';
-    }
-    if (definition.d === ARROW_MARKERS.classic!.d) {
-      return 'classic';
-    }
-    if (definition.d === ARROW_MARKERS.block!.d) {
-      return 'block';
-    }
+    if (!definition) return 'none';
+    if (definition.d === ARROW_MARKERS.classic!.d) return 'classic';
+    if (definition.d === ARROW_MARKERS.block!.d) return 'block';
     return 'none';
   }
 
@@ -646,9 +567,7 @@ export class Edge extends EventBus {
       this.link[side]({ id: node.cell.id });
     } else {
       const port = node.cell.getPorts()[portIndex - 1];
-      if (port) {
-        this.link[side]({ id: node.cell.id, port: port.id });
-      }
+      if (port) this.link[side]({ id: node.cell.id, port: port.id });
     }
     this.emit('change', this);
   }
@@ -694,32 +613,24 @@ export class DiagramNode extends EventBus {
     this.customProps = {};
   }
 
-  // custom properties
-
   public getCustomProperty(key: string): any {
     return this.customProps[key];
   }
-
   public setCustomProperty(key: string, value: any): void {
     this.customProps[key] = value;
     this.cell?.set(`custom_${key}`, value);
     this.emit('change', this);
   }
-
   public getSchema(): Schema {
     return this.schema;
   }
-
-  // position and size
 
   public get id(): string | null {
     return this.cell?.id ?? null;
   }
 
   public get x(): number | undefined {
-    if (!this.cell) {
-      return this._headlessX;
-    }
+    if (!this.cell) return this._headlessX;
     return this.cell.position().x;
   }
   public set x(value: number) {
@@ -732,9 +643,7 @@ export class DiagramNode extends EventBus {
   }
 
   public get y(): number | undefined {
-    if (!this.cell) {
-      return this._headlessY;
-    }
+    if (!this.cell) return this._headlessY;
     return this.cell.position().y;
   }
   public set y(value: number) {
@@ -756,8 +665,6 @@ export class DiagramNode extends EventBus {
     return 4;
   }
 
-  // label
-
   public get label(): string {
     return this.cell?.attr('label/text') ?? this._label;
   }
@@ -775,9 +682,7 @@ export class DiagramNode extends EventBus {
   }
   public set labelColor(value: string) {
     this._labelColor = value;
-    if (this.cell) {
-      this.cell.attr('label/fill', value);
-    }
+    if (this.cell) this.cell.attr('label/fill', value);
     this.emit('change', this);
   }
 
@@ -792,8 +697,6 @@ export class DiagramNode extends EventBus {
     }
     this.emit('change', this);
   }
-
-  // description
 
   public get description(): string {
     return this.cell?.get('description') ?? this._description;
@@ -813,22 +716,16 @@ export class DiagramNode extends EventBus {
   }
   public set descriptionColor(value: string) {
     this._descriptionColor = value;
-    if (this.cell) {
-      this.cell.attr('descriptionLabel/fill', value);
-    }
+    if (this.cell) this.cell.attr('descriptionLabel/fill', value);
     this.emit('change', this);
   }
-
-  // appearance
 
   public get backgroundColor(): string {
     return this.cell?.attr('body/fill') ?? this._backgroundColor;
   }
   public set backgroundColor(value: string) {
     this._backgroundColor = value;
-    if (this.cell) {
-      this.cell.attr('body/fill', value);
-    }
+    if (this.cell) this.cell.attr('body/fill', value);
     this.emit('change', this);
   }
 
@@ -837,9 +734,7 @@ export class DiagramNode extends EventBus {
   }
   public set borderColor(value: string) {
     this._borderColor = value;
-    if (this.cell) {
-      this.cell.attr('body/stroke', value);
-    }
+    if (this.cell) this.cell.attr('body/stroke', value);
     this.emit('change', this);
   }
 
@@ -848,13 +743,9 @@ export class DiagramNode extends EventBus {
   }
   public set borderWidth(value: number) {
     this._borderWidth = value;
-    if (this.cell) {
-      this.cell.attr('body/strokeWidth', value);
-    }
+    if (this.cell) this.cell.attr('body/strokeWidth', value);
     this.emit('change', this);
   }
-
-  // image
 
   public get imageUrl(): string {
     return this.cell?.get('imageUrl') ?? this._imageUrl;
@@ -894,8 +785,6 @@ export class DiagramNode extends EventBus {
     this.emit('change', this);
   }
 
-  // movement
-
   public moveTo(x: number, y: number): this {
     if (!this.cell) {
       this._headlessX = x;
@@ -907,11 +796,9 @@ export class DiagramNode extends EventBus {
     this.emit('move', this);
     return this;
   }
-
   public moveBy(deltaX: number, deltaY: number): this {
     return this.moveTo((this.x ?? 0) + deltaX, (this.y ?? 0) + deltaY);
   }
-
   public toFront(): this {
     this.cell?.toFront();
     return this;
@@ -920,9 +807,6 @@ export class DiagramNode extends EventBus {
     this.cell?.toBack();
     return this;
   }
-
-  // selection
-
   public select(): this {
     this.editor?._selectItem(this);
     return this;
@@ -931,8 +815,6 @@ export class DiagramNode extends EventBus {
     this.editor?.clearSelection();
     return this;
   }
-
-  // edges
 
   public getEdges(): Edge[] {
     return this.editor?._getEdgesForNode(this) ?? [];
@@ -949,9 +831,8 @@ export class DiagramNode extends EventBus {
     sourcePortIndex: number | null = null,
     targetPortIndex: number | null = null,
   ): Edge | null {
-    if (targetNode === this) {
+    if (targetNode === this)
       throw new Error('A node cannot connect to itself.');
-    }
     return (
       this.editor?._createEdge(
         this,
@@ -961,8 +842,6 @@ export class DiagramNode extends EventBus {
       ) ?? null
     );
   }
-
-  // lifecycle
 
   public remove(): void {
     this.cell?.remove();
@@ -978,9 +857,7 @@ export class DiagramNode extends EventBus {
   }
 
   public _resizeToFitContent(): void {
-    if (!this.editor || !this.cell) {
-      return;
-    }
+    if (!this.editor || !this.cell) return;
     this.editor._fitNodeToContent(this.cell);
   }
 
@@ -999,6 +876,8 @@ export interface DefineOptions {
   defaults?: NodeOptions;
   schema?: Schema;
   visibleProps?: BuiltInNodeProp[];
+  editProp?: string;
+  onKeyUp?: (node: DiagramNode, key: string) => void;
 }
 
 export type BuiltInNodeProp =
@@ -1020,6 +899,8 @@ export type BuiltInNodeProp =
   const defaultOptions: NodeOptions = options.defaults ?? {};
   const schema: Schema = options.schema ?? {};
   const visibleProps: BuiltInNodeProp[] | undefined = options.visibleProps;
+  const editProp: string = options.editProp ?? 'label';
+  const onKeyUp = options.onKeyUp ?? null;
 
   class CustomNode extends (BaseNodeClass as any) {
     constructor(options: NodeOptions = {}) {
@@ -1046,9 +927,8 @@ export type BuiltInNodeProp =
         'imageHeight',
       ];
       builtIns.forEach((key) => {
-        if (merged[key] !== undefined) {
+        if (merged[key] !== undefined)
           (this as any)[`_init_${key}`] = merged[key];
-        }
       });
       this._label = merged.label ?? defaultOptions.label ?? '';
 
@@ -1079,15 +959,12 @@ export type BuiltInNodeProp =
     }
 
     setCustomProperty(key: string, value: any): void {
-      if (!(key in this.schema)) {
-        return;
-      }
+      if (!(key in this.schema)) return;
       const fieldDefinition = this.schema[key] as FieldDefinition;
       const oldValue = this.customProps[key];
       this.customProps[key] = value;
-      if (fieldDefinition.type !== 'object') {
+      if (fieldDefinition.type !== 'object')
         this.cell?.set(`custom_${key}`, value);
-      }
       fieldDefinition.onChange?.(
         this as unknown as DiagramNode,
         value,
@@ -1115,6 +992,8 @@ export type BuiltInNodeProp =
   (CustomNode as any).__schema = schema;
   (CustomNode as any).__baseClass = (BaseNodeClass as any).nodeClass;
   (CustomNode as any).__visibleProps = visibleProps ?? null;
+  (CustomNode as any).__editProp = editProp;
+  (CustomNode as any).__onKeyUp = onKeyUp;
 
   (CustomNode.prototype as any)._getShapeType = (
     BaseNodeClass.prototype as any
@@ -1676,26 +1555,20 @@ export class DiagramEditor extends EventBus {
       'edge:change',
     ].forEach((event) => {
       this.on(event, () => {
-        if (!this._isLoading) {
-          this.emit('change');
-        }
+        if (!this._isLoading) this.emit('change');
       });
     });
 
-    if (container) {
-      this.render(container);
-    }
+    if (container) this.render(container);
   }
 
   // ── Public API ──────────────────────────────────────────────
 
   public async render(container: HTMLElement): Promise<this> {
-    if (this._graph) {
+    if (this._graph)
       throw new Error('DiagramEditor.render() can only be called once.');
-    }
 
     this.container = container;
-
     this._buildLayout();
     this._setupRenderer();
 
@@ -1707,21 +1580,17 @@ export class DiagramEditor extends EventBus {
       item.textContent = (NodeClass as any).__nodeName ?? label;
       item.draggable = true;
       item.dataset.nodeTypeLabel = label;
-
       item.addEventListener('click', () => {
-        if (!this._isMobile()) {
-          return;
-        }
+        if (!this._isMobile()) return;
         this.addNode(new NodeClass());
-        if (!this._leftSidebar.classList.contains('wf-collapsed')) {
+        if (!this._leftSidebar.classList.contains('wf-collapsed'))
           this._toggleSidebar(this._leftSidebar);
-        }
       });
-
       item.addEventListener('dragstart', (event) =>
         (event as DragEvent).dataTransfer!.setData('customNode', label),
       );
     });
+
     this._attachButtonListeners();
     this._attachDiagramListeners();
     this._attachTouchListeners();
@@ -1732,7 +1601,6 @@ export class DiagramEditor extends EventBus {
       this._setSidebarCollapsed(this._rightSidebar, true);
     }
 
-    // Determine positioning policy
     const nodes = [...this._nodeMap.values()];
     const positioned = nodes.filter(
       (n) => n.x !== undefined && n.y !== undefined,
@@ -1758,17 +1626,13 @@ export class DiagramEditor extends EventBus {
       serialized.nodes.length > 0 ||
       (serialized.nodeTypes && serialized.nodeTypes.length > 0)
     ) {
-      if (shouldAutoArrange) {
+      if (shouldAutoArrange)
         serialized.nodes.forEach((n) => {
           delete n.x;
           delete n.y;
         });
-      }
       await this.deserialize(serialized);
-
-      if (shouldAutoArrange) {
-        await this.autoArrange();
-      }
+      if (shouldAutoArrange) await this.autoArrange();
     }
 
     return this;
@@ -1787,17 +1651,12 @@ export class DiagramEditor extends EventBus {
       item.textContent = displayName;
       item.draggable = true;
       item.dataset.nodeTypeLabel = label;
-
       item.addEventListener('click', () => {
-        if (!this._isMobile()) {
-          return;
-        }
+        if (!this._isMobile()) return;
         this.addNode(new NodeClass());
-        if (!this._leftSidebar.classList.contains('wf-collapsed')) {
+        if (!this._leftSidebar.classList.contains('wf-collapsed'))
           this._toggleSidebar(this._leftSidebar);
-        }
       });
-
       item.addEventListener('dragstart', (event) =>
         (event as DragEvent).dataTransfer!.setData('customNode', label),
       );
@@ -1806,16 +1665,14 @@ export class DiagramEditor extends EventBus {
     // TODO: Replace these ad-hoc constructor stamps with a typed TypeRegistry map.
     (NodeClass as any).__nodeLabel = label;
     (NodeClass as any).__nodeName = displayName;
-    if (!Object.prototype.hasOwnProperty.call(NodeClass, 'nodeClass')) {
+    if (!Object.prototype.hasOwnProperty.call(NodeClass, 'nodeClass'))
       (NodeClass as any).nodeClass = label;
-    }
     this._registeredNodeTypes[label] = NodeClass;
   }
 
   public registerBuiltInNodes(): void {
-    for (const { cls, name } of builtInShapes) {
+    for (const { cls, name } of builtInShapes)
       this.registerNodeType(cls.name, cls, name);
-    }
   }
 
   public addNode(
@@ -1823,12 +1680,9 @@ export class DiagramEditor extends EventBus {
     canvasX?: number,
     canvasY?: number,
   ): Promise<DiagramNode> {
-    // Stamp a stable nodeClass on the instance
-    if (!(node as any)._nodeClass) {
+    if (!(node as any)._nodeClass)
       (node as any)._nodeClass = (node.constructor as any).nodeClass;
-    }
 
-    // Headless: just store the node and return
     if (this._isHeadless) {
       const id = `node-${Math.random().toString(36).slice(2)}`;
       (node as any)._headlessId = id;
@@ -1846,10 +1700,8 @@ export class DiagramEditor extends EventBus {
 
     const namespace = joint.shapes;
     const area = this._canvasArea;
-
     const centerX = canvasX ?? area.clientWidth / 2;
     const centerY = canvasY ?? area.clientHeight / 2;
-
     const localPosition: Point = this._renderer.clientToLocalPoint({
       x: centerX + area.getBoundingClientRect().left,
       y: centerY + area.getBoundingClientRect().top,
@@ -1861,7 +1713,6 @@ export class DiagramEditor extends EventBus {
       node instanceof DiamondNode;
     const width = isSquarish ? NODE_SQUARISH_SIZE : NODE_DEFAULT_WIDTH;
     const height = isSquarish ? NODE_SQUARISH_SIZE : NODE_DEFAULT_HEIGHT;
-
     const openPosition = this._findOpenPosition(
       localPosition.x - width / 2,
       localPosition.y - height / 2,
@@ -1873,9 +1724,7 @@ export class DiagramEditor extends EventBus {
     const cell = node._buildCell(openPosition, namespace, portRadius);
     cell.attr('label/text', node._label);
     const customLabel = (node.constructor as any).__nodeLabel;
-    if (customLabel) {
-      cell.set('nodeClass', customLabel);
-    }
+    if (customLabel) cell.set('nodeClass', customLabel);
     node.cell = cell;
     node.editor = this;
 
@@ -1897,15 +1746,12 @@ export class DiagramEditor extends EventBus {
     const initOptions: NodeOptions = node._initOptions || {};
     builtIns.forEach((key) => {
       const value = initOptions[key] ?? (node as any)[`_init_${key}`];
-      if (value !== undefined) {
-        (node as any)[key] = value;
-      }
+      if (value !== undefined) (node as any)[key] = value;
     });
 
     Object.entries(node.customProps).forEach(([key, value]) =>
       cell.set(`custom_${key}`, value),
     );
-
     cell.addTo(this._graph);
     this._nodeMap.set(cell.id, node);
     this.clearSelection();
@@ -1959,9 +1805,7 @@ export class DiagramEditor extends EventBus {
 
   public clearRegisteredNodes(): this {
     this._registeredNodeTypes = {};
-    if (!this._isHeadless) {
-      this._shapeLibrary.innerHTML = '';
-    }
+    if (!this._isHeadless) this._shapeLibrary.innerHTML = '';
     return this;
   }
 
@@ -1980,20 +1824,14 @@ export class DiagramEditor extends EventBus {
   }
 
   public panTo(x: number, y: number): this {
-    if (!this._isHeadless) {
-      this._renderer.translate(x, y);
-    }
+    if (!this._isHeadless) this._renderer.translate(x, y);
     return this;
   }
 
   public centerContent(): this {
-    if (this._isHeadless) {
-      return this;
-    }
+    if (this._isHeadless) return this;
     const bbox = this._graph.getBBox();
-    if (!bbox) {
-      return this;
-    }
+    if (!bbox) return this;
     const size = this._renderer.getComputedSize();
     this._renderer.scale(1, 1);
     this._renderer.translate(
@@ -2004,48 +1842,35 @@ export class DiagramEditor extends EventBus {
   }
 
   public zoomIn(factor: number = ZOOM_IN_FACTOR): this {
-    if (!this._isHeadless) {
-      this._zoomAtCenter(factor);
-    }
+    if (!this._isHeadless) this._zoomAtCenter(factor);
     return this;
   }
   public zoomOut(factor: number = ZOOM_OUT_FACTOR): this {
-    if (!this._isHeadless) {
-      this._zoomAtCenter(factor);
-    }
+    if (!this._isHeadless) this._zoomAtCenter(factor);
     return this;
   }
   public zoomReset(): this {
-    if (!this._isHeadless) {
-      this._zoomAtCenter(1 / this._renderer.scale().sx);
-    }
+    if (!this._isHeadless) this._zoomAtCenter(1 / this._renderer.scale().sx);
     return this;
   }
-
   public zoomToFit(): this {
-    if (!this._isHeadless) {
+    if (!this._isHeadless)
       this._renderer.scaleContentToFit({
         padding: ZOOM_FIT_PADDING,
         minScale: ZOOM_FIT_MIN_SCALE,
         maxScale: ZOOM_FIT_MAX_SCALE,
       });
-    }
     return this;
   }
 
   public getZoomLevel(): number {
-    if (this._isHeadless) {
-      return 1;
-    }
-    return this._renderer.scale().sx;
+    return this._isHeadless ? 1 : this._renderer.scale().sx;
   }
   public getSelectedItem(): DiagramNode | Edge | null {
     return this._selection;
   }
   public clearSelection(): this {
-    if (!this._isHeadless) {
-      this._deselectAll();
-    }
+    if (!this._isHeadless) this._deselectAll();
     return this;
   }
 
@@ -2053,11 +1878,10 @@ export class DiagramEditor extends EventBus {
     this._autoPortsOn = enabled;
     if (!this._isHeadless) {
       this._autoPortToggleButton.classList.toggle('active', enabled);
-      if (enabled) {
+      if (enabled)
         this._graph
           .getElements()
           .forEach((el: any) => this._updateConnectionPorts(el));
-      }
     }
     return this;
   }
@@ -2066,10 +1890,7 @@ export class DiagramEditor extends EventBus {
   // graph.startBatch / graph.stopBatch for callers applying bulk mutations.
 
   public autoArrange(): Promise<this> {
-    if (this._isHeadless) {
-      return Promise.resolve(this);
-    }
-
+    if (this._isHeadless) return Promise.resolve(this);
     return new Promise<this>((resolve) => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
@@ -2103,13 +1924,10 @@ export class DiagramEditor extends EventBus {
       const { width, height } = element.size();
       dagreGraph.setNode(element.id, { width, height });
     });
-
     this._graph.getLinks().forEach((link: any) => {
       const source = link.getSourceElement();
       const target = link.getTargetElement();
-      if (source && target) {
-        dagreGraph.setEdge(source.id, target.id);
-      }
+      if (source && target) dagreGraph.setEdge(source.id, target.id);
     });
 
     dagre.layout(dagreGraph);
@@ -2117,9 +1935,7 @@ export class DiagramEditor extends EventBus {
     this._isLoading = true;
     this._graph.getElements().forEach((element: any) => {
       const layoutNode = dagreGraph.node(element.id);
-      if (!layoutNode) {
-        return;
-      }
+      if (!layoutNode) return;
       element.position(
         Math.ceil((layoutNode.x - layoutNode.width / 2) / this.gridSize) *
           this.gridSize,
@@ -2129,26 +1945,10 @@ export class DiagramEditor extends EventBus {
     });
     this._isLoading = false;
 
-    if (this._autoPortsOn) {
-      this._isLoading = true;
-      this._graph.getElements().forEach((element: any) => {
-        const layoutNode = dagreGraph.node(element.id);
-        if (!layoutNode) {
-          return;
-        }
-        element.position(
-          Math.ceil((layoutNode.x - layoutNode.width / 2) / this.gridSize) *
-            this.gridSize,
-          Math.ceil((layoutNode.y - layoutNode.height / 2) / this.gridSize) *
-            this.gridSize,
-        );
-      });
-      this._isLoading = false;
+    if (this._autoPortsOn)
       this._graph
         .getElements()
         .forEach((el: any) => this._updateConnectionPorts(el));
-    }
-
     this.centerContent();
   }
 
@@ -2157,7 +1957,6 @@ export class DiagramEditor extends EventBus {
       const schema = (cls as any).__schema;
       const nodeClass = (cls as any).nodeClass ?? label;
       if (schema) {
-        // Strip function fields — they live in code and must never be written into JSON
         const safeSchema: Schema = Object.fromEntries(
           Object.entries(schema as Schema).map(([key, fieldDef]) => {
             const {
@@ -2170,6 +1969,7 @@ export class DiagramEditor extends EventBus {
           }),
         );
         const visibleProps = (cls as any).__visibleProps;
+        const editProp = (cls as any).__editProp;
         return {
           nodeClass,
           name: (cls as any).__nodeName,
@@ -2178,6 +1978,9 @@ export class DiagramEditor extends EventBus {
           schema: safeSchema,
           ...(visibleProps !== null && visibleProps !== undefined
             ? { visibleProps }
+            : {}),
+          ...(editProp !== undefined && editProp !== 'label'
+            ? { editProp }
             : {}),
         };
       }
@@ -2192,6 +1995,29 @@ export class DiagramEditor extends EventBus {
     // FIXME: The headless and non-headless paths below produce the same SerializedNode
     // shape with only the id and nodeClass source differing. Extract a
     // _serializeNodeProps(node) helper to eliminate the duplicated props/customProps block.
+    const serializeNodeProps = (node: DiagramNode) => ({
+      label: node.label,
+      labelColor: node.labelColor,
+      labelFontSize: node.labelFontSize,
+      description: node.description,
+      descriptionColor: node.descriptionColor,
+      backgroundColor: node.backgroundColor,
+      borderColor: node.borderColor,
+      borderWidth: node.borderWidth,
+      imageUrl: node.imageUrl,
+      imageWidth: node.imageWidth,
+      imageHeight: node.imageHeight,
+    });
+    const serializeCustomProps = (node: DiagramNode) =>
+      Object.fromEntries(
+        Object.entries(node.customProps).map(([k, v]) => {
+          const fieldDef = (node.schema as Schema)[k] as
+            | FieldDefinition
+            | undefined;
+          return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
+        }),
+      );
+
     if (this._isHeadless) {
       const nodes: SerializedNode[] = [...this._nodeMap.values()].map(
         (node) => ({
@@ -2200,30 +2026,10 @@ export class DiagramEditor extends EventBus {
             (node.constructor as any).nodeClass ?? (node as any)._nodeClass,
           x: node.x,
           y: node.y,
-          props: {
-            label: node.label,
-            labelColor: node.labelColor,
-            labelFontSize: node.labelFontSize,
-            description: node.description,
-            descriptionColor: node.descriptionColor,
-            backgroundColor: node.backgroundColor,
-            borderColor: node.borderColor,
-            borderWidth: node.borderWidth,
-            imageUrl: node.imageUrl,
-            imageWidth: node.imageWidth,
-            imageHeight: node.imageHeight,
-          },
-          customProps: Object.fromEntries(
-            Object.entries(node.customProps).map(([k, v]) => {
-              const fieldDef = (node.schema as Schema)[k] as
-                | FieldDefinition
-                | undefined;
-              return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
-            }),
-          ),
+          props: serializeNodeProps(node),
+          customProps: serializeCustomProps(node),
         }),
       );
-
       const edges: SerializedEdge[] = this._headlessEdges.map(
         (headlessEdge) => ({
           sourceId: (headlessEdge.source as any)._headlessId,
@@ -2244,7 +2050,6 @@ export class DiagramEditor extends EventBus {
           vertices: headlessEdge.props.vertices ?? [],
         }),
       );
-
       return { nodes, edges };
     }
 
@@ -2256,35 +2061,14 @@ export class DiagramEditor extends EventBus {
         (node as any)._nodeClass,
       x: node.x,
       y: node.y,
-      props: {
-        label: node.label,
-        labelColor: node.labelColor,
-        labelFontSize: node.labelFontSize,
-        description: node.description,
-        descriptionColor: node.descriptionColor,
-        backgroundColor: node.backgroundColor,
-        borderColor: node.borderColor,
-        borderWidth: node.borderWidth,
-        imageUrl: node.imageUrl,
-        imageWidth: node.imageWidth,
-        imageHeight: node.imageHeight,
-      },
-      customProps: Object.fromEntries(
-        Object.entries(node.customProps).map(([k, v]) => {
-          const fieldDef = (node.schema as Schema)[k] as
-            | FieldDefinition
-            | undefined;
-          return [k, fieldDef?.serialize ? fieldDef.serialize(v, node) : v];
-        }),
-      ),
+      props: serializeNodeProps(node),
+      customProps: serializeCustomProps(node),
     }));
 
     const edges: SerializedEdge[] = [...this._edgeMap.values()].map((edge) => {
       const resolvePort = (endpoint: any, node: DiagramNode): number | null => {
         const portId = endpoint?.port;
-        if (!portId) {
-          return null;
-        }
+        if (!portId) return null;
         const index = node.cell
           .getPorts()
           .findIndex((port: any) => port.id === portId);
@@ -2315,15 +2099,11 @@ export class DiagramEditor extends EventBus {
   public serialize(includeTypes: boolean = true): string {
     const { nodes, edges } = this.serializeNodes();
     const result: SerializedDiagram = { nodes, edges };
-    if (includeTypes) {
-      result.nodeTypes = this.serializeTypes();
-    }
+    if (includeTypes) result.nodeTypes = this.serializeTypes();
     return JSON.stringify(result);
   }
 
   public async deserialize(json: string | SerializedDiagram): Promise<this> {
-    // TODO: Wrap JSON.parse in a try/catch and re-throw as a descriptive Error
-    // to align with the UnknownNodeTypeError pattern — a raw SyntaxError gives no context.
     let parsedDiagram: SerializedDiagram;
     try {
       parsedDiagram = typeof json === 'string' ? JSON.parse(json) : json;
@@ -2335,9 +2115,8 @@ export class DiagramEditor extends EventBus {
       edges: edgeDataList,
       nodeTypes,
     }: SerializedDiagram = parsedDiagram;
-    if (!Array.isArray(nodeDataList)) {
+    if (!Array.isArray(nodeDataList))
       throw new Error('Invalid diagram file format.');
-    }
 
     if (nodeTypes != null && nodeTypes.length > 0) {
       const importedKeys = new Set(
@@ -2353,9 +2132,7 @@ export class DiagramEditor extends EventBus {
             const item = this._shapeLibrary.querySelector(
               `[data-node-type-label="${key}"]`,
             );
-            if (item) {
-              item.remove();
-            }
+            if (item) item.remove();
           }
         }
       }
@@ -2368,31 +2145,27 @@ export class DiagramEditor extends EventBus {
             const existingEntry = Object.entries(
               this._registeredNodeTypes,
             ).find(([, c]) => (c as any).nodeClass === typeData);
-            if (!existingEntry) {
+            if (!existingEntry)
               this.registerNodeType(typeData, cls, typeInfo.name);
-            }
           }
         } else {
-          // If already registered from code, preserve it — don't overwrite with stripped import
           const existing = Object.values(this._registeredNodeTypes).find(
             (cls) => (cls as any).nodeClass === typeData.nodeClass,
           );
-          if (existing) {
-            continue;
-          }
+          if (existing) continue;
 
           const baseClass =
             builtInShapes.find((t) => t.cls.name === typeData.baseClass)?.cls ??
             (Object.values(this._registeredNodeTypes).find(
               (cls) => (cls as any).nodeClass === typeData.baseClass,
             ) as NodeConstructor | undefined);
-          if (!baseClass) {
-            throw new UnknownNodeTypeError(typeData.baseClass);
-          }
+          if (!baseClass) throw new UnknownNodeTypeError(typeData.baseClass);
+
           const NodeClass = (DiagramNode as any).define(baseClass, {
             defaults: typeData.defaultOptions,
             schema: typeData.schema,
             visibleProps: (typeData as any).visibleProps ?? undefined,
+            editProp: (typeData as any).editProp ?? undefined,
           });
           (NodeClass as any).nodeClass = typeData.nodeClass;
           this.registerNodeType(typeData.nodeClass, NodeClass, typeData.name);
@@ -2400,15 +2173,11 @@ export class DiagramEditor extends EventBus {
       }
     }
 
-    if (!this._isHeadless) {
-      this._deselectAll();
-    }
+    if (!this._isHeadless) this._deselectAll();
     this._nodeMap.clear();
     this._edgeMap.clear();
     this._headlessEdges = [];
-    if (!this._isHeadless) {
-      this._graph.clear();
-    }
+    if (!this._isHeadless) this._graph.clear();
 
     const nodeClassMap: Record<string, NodeConstructor> = Object.fromEntries(
       Object.values(this._registeredNodeTypes).map((cls) => [
@@ -2420,14 +2189,11 @@ export class DiagramEditor extends EventBus {
     const autoPortsOn = this._autoPortsOn;
     this._autoPortsOn = false;
     this._isLoading = true;
-
     const oldIdToNode: Record<string, DiagramNode> = {};
 
     for (const nodeData of nodeDataList) {
       const NodeClass = nodeClassMap[nodeData.nodeClass];
-      if (!NodeClass) {
-        throw new UnknownNodeTypeError(nodeData.nodeClass);
-      }
+      if (!NodeClass) throw new UnknownNodeTypeError(nodeData.nodeClass);
 
       const node = new NodeClass({
         ...nodeData.props,
@@ -2435,9 +2201,6 @@ export class DiagramEditor extends EventBus {
       });
       node.editor = this;
 
-      // Two-pass custom prop restoration:
-      // Pass 1 — deserialize and set all values silently (no onChange)
-      // Pass 2 — fire onChange only after all props are populated
       const applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
         Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
           const fieldDefinition = fieldDef as FieldDefinition;
@@ -2458,12 +2221,8 @@ export class DiagramEditor extends EventBus {
       if (this._isHeadless) {
         const id = nodeData.id ?? `node-${Math.random().toString(36).slice(2)}`;
         (node as any)._headlessId = id;
-        if (nodeData.x !== undefined) {
-          node.x = nodeData.x;
-        }
-        if (nodeData.y !== undefined) {
-          node.y = nodeData.y;
-        }
+        if (nodeData.x !== undefined) node.x = nodeData.x;
+        if (nodeData.y !== undefined) node.y = nodeData.y;
         this._nodeMap.set(id, node);
         node.on('change', (changedNode: DiagramNode) =>
           this.emit('node:change', changedNode),
@@ -2500,15 +2259,12 @@ export class DiagramEditor extends EventBus {
       const initOptions: NodeOptions = node._initOptions || {};
       builtIns.forEach((key) => {
         const value = initOptions[key] ?? (node as any)[`_init_${key}`];
-        if (value !== undefined) {
-          (node as any)[key] = value;
-        }
+        if (value !== undefined) (node as any)[key] = value;
       });
 
       Object.entries(node.customProps).forEach(([key, value]) =>
         cell.set(`custom_${key}`, value),
       );
-
       cell.addTo(this._graph);
       this._nodeMap.set(cell.id, node);
 
@@ -2537,16 +2293,13 @@ export class DiagramEditor extends EventBus {
       node.on('move', (movedNode: DiagramNode) =>
         this.emit('node:move', movedNode),
       );
-
       oldIdToNode[nodeData.id] = node;
     }
 
     for (const edgeData of edgeDataList) {
       const sourceNode = oldIdToNode[edgeData.sourceId];
       const targetNode = oldIdToNode[edgeData.targetId];
-      if (!sourceNode || !targetNode) {
-        continue;
-      }
+      if (!sourceNode || !targetNode) continue;
 
       if (this._isHeadless) {
         this._headlessEdges.push({
@@ -2562,31 +2315,19 @@ export class DiagramEditor extends EventBus {
         edgeData.sourcePort,
         edgeData.targetPort,
       );
-      if (!edge) {
-        continue;
-      }
+      if (!edge) continue;
 
-      if (edgeData.label) {
-        edge.label = edgeData.label;
-      }
-      if (edgeData.labelColor) {
-        edge.labelColor = edgeData.labelColor;
-      }
-      if (edgeData.labelFontSize) {
-        edge.labelFontSize = edgeData.labelFontSize;
-      }
+      if (edgeData.label) edge.label = edgeData.label;
+      if (edgeData.labelColor) edge.labelColor = edgeData.labelColor;
+      if (edgeData.labelFontSize) edge.labelFontSize = edgeData.labelFontSize;
       edge.lineColor = edgeData.lineColor;
       edge.lineWidth = edgeData.lineWidth;
       edge.lineStyle = edgeData.lineStyle;
       edge.sourceArrow = edgeData.sourceArrow;
       edge.targetArrow = edgeData.targetArrow;
       edge.connectorType = edgeData.connectorType;
-      if (edgeData.description) {
-        edge.description = edgeData.description;
-      }
-      if (edgeData.vertices?.length) {
-        edge.link.vertices(edgeData.vertices);
-      }
+      if (edgeData.description) edge.description = edgeData.description;
+      if (edgeData.vertices?.length) edge.link.vertices(edgeData.vertices);
     }
 
     this._autoPortsOn = autoPortsOn;
@@ -2601,42 +2342,30 @@ export class DiagramEditor extends EventBus {
 
       this._graph.getLinks().forEach((link: any) => {
         const edge = this._edgeMap.get(link.id);
-        if (!edge) {
-          return;
-        }
+        if (!edge) return;
         const savedEdge = edgeDataList.find(
           (data) =>
             oldIdToNode[data.sourceId]?.cell.id === edge.source.cell.id &&
             oldIdToNode[data.targetId]?.cell.id === edge.target.cell.id,
         );
-        if (!savedEdge) {
-          return;
-        }
-        if (savedEdge.sourcePort != null) {
+        if (!savedEdge) return;
+        if (savedEdge.sourcePort != null)
           link.set('sourcePort', savedEdge.sourcePort);
-        }
-        if (savedEdge.targetPort != null) {
+        if (savedEdge.targetPort != null)
           link.set('targetPort', savedEdge.targetPort);
-        }
       });
 
       if (this._autoPortsOn) {
         this._graph.getLinks().forEach((link: any) => {
           const edge = this._edgeMap.get(link.id);
-          if (!edge) {
-            return;
-          }
+          if (!edge) return;
           const savedEdge = edgeDataList.find(
             (data) =>
               oldIdToNode[data.sourceId]?.cell.id === edge.source.cell.id &&
               oldIdToNode[data.targetId]?.cell.id === edge.target.cell.id,
           );
-          if (savedEdge?.sourcePort == null) {
-            link.unset('sourcePort');
-          }
-          if (savedEdge?.targetPort == null) {
-            link.unset('targetPort');
-          }
+          if (savedEdge?.sourcePort == null) link.unset('sourcePort');
+          if (savedEdge?.targetPort == null) link.unset('targetPort');
         });
       }
     }
@@ -2649,8 +2378,16 @@ export class DiagramEditor extends EventBus {
 
   // TODO: Replace `any` with specific internal interfaces for JointJS view and model types.
   public _selectItem(item: DiagramNode | Edge): void {
-    if (this._isHeadless) {
-      return;
+    if (this._isHeadless) return;
+    if (this._selection && this._selection !== item) {
+      const prevModel =
+        this._selection instanceof DiagramNode
+          ? this._selection.cell
+          : (this._selection as Edge).link;
+      this._renderer
+        .findViewByModel(prevModel)
+        ?.el.classList.remove('wf-selected');
+      joint.highlighters.stroke.removeAll(this._renderer);
     }
     this._selection = item;
     const isNode = item instanceof DiagramNode;
@@ -2728,9 +2465,7 @@ export class DiagramEditor extends EventBus {
       );
     };
 
-    if (alreadyConnected(sourceNode, targetNode)) {
-      return null;
-    }
+    if (alreadyConnected(sourceNode, targetNode)) return null;
 
     if (this._isHeadless) {
       const edge = new Edge(null, sourceNode, targetNode, this);
@@ -2739,10 +2474,7 @@ export class DiagramEditor extends EventBus {
       this._headlessEdges.push({
         source: sourceNode,
         target: targetNode,
-        props: {
-          sourcePort: sourcePortIndex,
-          targetPort: targetPortIndex,
-        },
+        props: { sourcePort: sourcePortIndex, targetPort: targetPortIndex },
       });
       edge.on('change', (changedEdge: Edge) =>
         this.emit('edge:change', changedEdge),
@@ -2778,13 +2510,8 @@ export class DiagramEditor extends EventBus {
         ? { id: targetNode.cell.id, port: targetPort.id }
         : { id: targetNode.cell.id },
     );
-
-    if (sourcePortIndex !== null) {
-      link.set('sourcePort', sourcePortIndex);
-    }
-    if (targetPortIndex !== null) {
-      link.set('targetPort', targetPortIndex);
-    }
+    if (sourcePortIndex !== null) link.set('sourcePort', sourcePortIndex);
+    if (targetPortIndex !== null) link.set('targetPort', targetPortIndex);
 
     this._graph.startBatch('edge');
     link.addTo(this._graph);
@@ -2815,9 +2542,7 @@ export class DiagramEditor extends EventBus {
     const descriptionElement = view.el.querySelector(
       '.descriptionLabel',
     ) as SVGTextElement | null;
-    if (!labelElement || !descriptionElement) {
-      return;
-    }
+    if (!labelElement || !descriptionElement) return;
 
     const fontScale =
       (cell.get('fontSizePercent') || FONT_SIZE_PERCENT_DEFAULT) /
@@ -2859,11 +2584,9 @@ export class DiagramEditor extends EventBus {
     } else if (
       ['triangle', 'hexagon', 'pentagon', 'octagon'].includes(shapeType)
     ) {
-      if (width / height > POLYGON_ASPECT_RATIO) {
+      if (width / height > POLYGON_ASPECT_RATIO)
         height = width / POLYGON_ASPECT_RATIO;
-      } else {
-        width = height * POLYGON_ASPECT_RATIO;
-      }
+      else width = height * POLYGON_ASPECT_RATIO;
       if (shapeType === 'triangle') {
         width *= TRIANGLE_SCALE;
         height *= TRIANGLE_SCALE;
@@ -2923,9 +2646,7 @@ export class DiagramEditor extends EventBus {
   // ── Private methods ──────────────────────────────────────────
 
   private _updateMobileButtonVisibility(): void {
-    if (!this._isMobile()) {
-      return;
-    }
+    if (!this._isMobile()) return;
     const shouldHide =
       this._selection !== null ||
       !this._leftSidebar.classList.contains('wf-collapsed') ||
@@ -3288,20 +3009,16 @@ export class DiagramEditor extends EventBus {
         targetView: any,
         targetMagnet: any,
       ) => {
-        if (!sourceMagnet || !targetMagnet || sourceView === targetView) {
+        if (!sourceMagnet || !targetMagnet || sourceView === targetView)
           return false;
-        }
         const sourceNode = this._nodeMap.get(sourceView.model.id);
         const targetNode = this._nodeMap.get(targetView.model.id);
-        if (!sourceNode || !targetNode) {
-          return false;
-        }
-        const alreadyConnected = [...this._edgeMap.values()].some(
+        if (!sourceNode || !targetNode) return false;
+        return ![...this._edgeMap.values()].some(
           (edge) =>
             (edge.source === sourceNode && edge.target === targetNode) ||
             (edge.source === targetNode && edge.target === sourceNode),
         );
-        return !alreadyConnected;
       },
     });
   }
@@ -3334,9 +3051,7 @@ export class DiagramEditor extends EventBus {
 
     this._importFileInput.addEventListener('change', (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        return;
-      }
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = (loadEvent) =>
         this.deserialize(
@@ -3352,12 +3067,10 @@ export class DiagramEditor extends EventBus {
     this._rightCollapseButton.addEventListener('click', () =>
       this._toggleSidebar(this._rightSidebar),
     );
-
     this._autoPortToggleButton.addEventListener('click', () =>
       this.setAutoPortSwitching(!this._autoPortsOn),
     );
     this._autoArrangeButton.addEventListener('click', () => this.autoArrange());
-
     this._zoomToFitButton.addEventListener('click', () => this.zoomToFit());
     this._zoomResetButton.addEventListener('click', () => this.zoomReset());
     this._zoomInButton.addEventListener('click', () => this.zoomIn());
@@ -3391,44 +3104,31 @@ export class DiagramEditor extends EventBus {
       const action = (event.target as Element)
         .closest('[data-action]')
         ?.getAttribute('data-action');
-      if (action === 'duplicate') {
-        this._duplicateSelected();
-      }
-      if (action === 'delete') {
-        this._deleteSelected();
-      }
+      if (action === 'duplicate') this._duplicateSelected();
+      if (action === 'delete') this._deleteSelected();
       this._contextMenu.style.display = 'none';
     });
 
     // TODO: Store this handler reference so destroy() can remove it via
     // window.removeEventListener — currently leaks on teardown.
     window.addEventListener('click', (event) => {
-      if (!(event.target as Element).closest('.wf-context-menu')) {
+      if (!(event.target as Element).closest('.wf-context-menu'))
         this._contextMenu.style.display = 'none';
-      }
     });
 
     this._propertiesHeaderActions.addEventListener('click', (event) => {
       const action = (event.target as Element)
         .closest('[data-action]')
         ?.getAttribute('data-action');
-      if (!action) {
-        return;
-      }
-      if (action === 'focus') {
-        this._focusCameraOnSelection();
-      }
+      if (!action) return;
+      if (action === 'focus') this._focusCameraOnSelection();
       if (action === 'duplicate') {
         this._duplicateSelected();
-        if (this._isMobile()) {
-          this._toggleSidebar(this._rightSidebar);
-        }
+        if (this._isMobile()) this._toggleSidebar(this._rightSidebar);
       }
       if (action === 'delete') {
         this._deleteSelected();
-        if (this._isMobile()) {
-          this._toggleSidebar(this._rightSidebar);
-        }
+        if (this._isMobile()) this._toggleSidebar(this._rightSidebar);
       }
     });
 
@@ -3475,7 +3175,6 @@ export class DiagramEditor extends EventBus {
         cell.attr('label/text', node._label);
         node.cell = cell;
         node.editor = this;
-
         Object.entries(node.customProps).forEach(([key, value]) =>
           cell.set(`custom_${key}`, value),
         );
@@ -3512,11 +3211,8 @@ export class DiagramEditor extends EventBus {
       }
 
       const droppedType = event.dataTransfer!.getData('type');
-
       const match = builtInShapes.find((shape) => shape.type === droppedType);
-      if (!match) {
-        return;
-      }
+      if (!match) return;
 
       const label = droppedType.charAt(0).toUpperCase() + droppedType.slice(1);
       const dropPosition: Point = this._renderer.clientToLocalPoint({
@@ -3530,7 +3226,6 @@ export class DiagramEditor extends EventBus {
       const isSquarish = ['square', 'circle', 'diamond'].includes(droppedType);
       const width = isSquarish ? NODE_SQUARISH_SIZE : NODE_DEFAULT_WIDTH;
       const height = isSquarish ? NODE_SQUARISH_SIZE : NODE_DEFAULT_HEIGHT;
-
       const openPosition = this._findOpenPosition(
         dropPosition.x - width / 2,
         dropPosition.y - height / 2,
@@ -3582,9 +3277,7 @@ export class DiagramEditor extends EventBus {
       ) as HTMLInputElement
     ).addEventListener('change', (event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        return;
-      }
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = (loadEvent) => {
         (
@@ -3592,25 +3285,20 @@ export class DiagramEditor extends EventBus {
             '[data-prop="imageUrl"]',
           ) as HTMLInputElement
         ).value = (loadEvent.target as FileReader).result as string;
-        if (this._selection instanceof DiagramNode) {
+        if (this._selection instanceof DiagramNode)
           this._selection.imageUrl = (loadEvent.target as FileReader)
             .result as string;
-        }
       };
       reader.readAsDataURL(file);
     });
   }
 
   private _handleNodePropertyChange(event: Event): void {
-    if (!(this._selection instanceof DiagramNode)) {
-      return;
-    }
+    if (!(this._selection instanceof DiagramNode)) return;
     const input = (event.target as Element).closest(
       '[data-prop]',
     ) as HTMLInputElement | null;
-    if (!input) {
-      return;
-    }
+    if (!input) return;
 
     const prop = input.dataset.prop!;
     const value =
@@ -3632,21 +3320,16 @@ export class DiagramEditor extends EventBus {
     }
 
     const resolvedProp = prop.endsWith('Hex') ? prop.slice(0, -3) : prop;
-    if (resolvedProp in this._selection) {
+    if (resolvedProp in this._selection)
       (this._selection as any)[resolvedProp] = value;
-    }
   }
 
   private _handleEdgePropertyChange(event: Event): void {
-    if (!(this._selection instanceof Edge)) {
-      return;
-    }
+    if (!(this._selection instanceof Edge)) return;
     const input = (event.target as Element).closest(
       '[data-prop]',
     ) as HTMLInputElement | null;
-    if (!input) {
-      return;
-    }
+    if (!input) return;
 
     const prop = input.dataset.prop!;
     const value =
@@ -3668,9 +3351,8 @@ export class DiagramEditor extends EventBus {
     }
 
     const resolvedProp = prop.endsWith('Hex') ? prop.slice(0, -3) : prop;
-    if (resolvedProp in this._selection) {
+    if (resolvedProp in this._selection)
       (this._selection as any)[resolvedProp] = value;
-    }
   }
 
   private _attachDiagramListeners(): void {
@@ -3690,17 +3372,11 @@ export class DiagramEditor extends EventBus {
       'element:pointerdown',
       (view: any, event: PointerEvent) => {
         const node = this._nodeMap.get(view.model.id);
-        if (!node) {
-          return;
-        }
-
+        if (!node) return;
         this._pointerDownAt = { x: event.clientX, y: event.clientY };
         this._selectionWasAlreadyActive = this._selection === node;
         this._deselectAll();
-
-        if (!this._isMobile()) {
-          node.cell.toFront();
-        }
+        if (!this._isMobile()) node.cell.toFront();
         this._selectItem(node);
       },
     );
@@ -3721,7 +3397,6 @@ export class DiagramEditor extends EventBus {
       ) {
         this._toggleSidebar(this._rightSidebar);
       }
-
       this._pointerDownAt = null;
       this._selectionWasAlreadyActive = false;
 
@@ -3744,14 +3419,10 @@ export class DiagramEditor extends EventBus {
     this._renderer.on('link:pointerdown', (view: any) => {
       this._renderer.el.classList.add('wf-dragging-link');
       const edge = this._edgeMap.get(view.model.id);
-      if (!edge) {
-        return;
-      }
-
+      if (!edge) return;
       this._deselectAll();
       view.model.toFront();
       this._selectItem(edge);
-
       view.addTools(
         new joint.dia.ToolsView({
           tools: [
@@ -3773,23 +3444,20 @@ export class DiagramEditor extends EventBus {
         this._renderer.el.classList.add('wf-dragging-link');
       }
     });
-
-    this._renderer.el.addEventListener('pointerup', () => {
-      this._renderer.el.classList.remove('wf-dragging-link');
-    });
+    this._renderer.el.addEventListener('pointerup', () =>
+      this._renderer.el.classList.remove('wf-dragging-link'),
+    );
 
     this._renderer.on(
       'cell:pointerdown tool:pointerdown',
       (view: any, event: PointerEvent) => {
-        if ((event?.target as Element)?.closest?.('.joint-port')) {
+        if ((event?.target as Element)?.closest?.('.joint-port'))
           this._renderer.el.classList.add('wf-dragging-link');
-        }
       },
     );
-
-    this._renderer.on('cell:pointerup link:pointerup tool:pointerup', () => {
-      this._renderer.el.classList.remove('wf-dragging-link');
-    });
+    this._renderer.on('cell:pointerup link:pointerup tool:pointerup', () =>
+      this._renderer.el.classList.remove('wf-dragging-link'),
+    );
 
     this._renderer.on('cell:contextmenu', (view: any, event: MouseEvent) => {
       event.preventDefault();
@@ -3806,7 +3474,6 @@ export class DiagramEditor extends EventBus {
 
     this._renderer.on('blank:pointerdown', (event: PointerEvent) => {
       this._collapseAllSidebarsOnMobile();
-
       const startX = event.clientX;
       const startY = event.clientY;
       const initialTranslation = this._renderer.translate();
@@ -3826,18 +3493,15 @@ export class DiagramEditor extends EventBus {
           initialTranslation.tx + (moveEvent.clientX - startX),
           initialTranslation.ty + (moveEvent.clientY - startY),
         );
-
       const onUp = (upEvent: MouseEvent) => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
         if (
           Math.abs(upEvent.clientX - startX) < 5 &&
           Math.abs(upEvent.clientY - startY) < 5
-        ) {
+        )
           this._deselectAll();
-        }
       };
-
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     });
@@ -3846,15 +3510,11 @@ export class DiagramEditor extends EventBus {
       const link = view.model;
       const sourceCell = link.getSourceElement();
       const targetCell = link.getTargetElement();
-      if (!sourceCell || !targetCell) {
-        return;
-      }
+      if (!sourceCell || !targetCell) return;
 
       const sourceNode = this._nodeMap.get(sourceCell.id);
       const targetNode = this._nodeMap.get(targetCell.id);
-      if (!sourceNode || !targetNode || this._edgeMap.has(link.id)) {
-        return;
-      }
+      if (!sourceNode || !targetNode || this._edgeMap.has(link.id)) return;
 
       const alreadyConnected = [...this._edgeMap.values()].some(
         (edge) =>
@@ -3908,9 +3568,8 @@ export class DiagramEditor extends EventBus {
 
     this._canvasArea.addEventListener('mousedown', () => {
       const tag = document.activeElement?.tagName;
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA')
         (this._canvasArea as HTMLElement).focus();
-      }
     });
 
     this._canvasArea.addEventListener(
@@ -3926,9 +3585,8 @@ export class DiagramEditor extends EventBus {
             this._selection instanceof Edge
           ) {
             event.preventDefault();
-            if (this._rightSidebar.classList.contains('wf-collapsed')) {
+            if (this._rightSidebar.classList.contains('wf-collapsed'))
               this._toggleSidebar(this._rightSidebar);
-            }
             await this._waitForRender(
               this._selection instanceof DiagramNode
                 ? this._selection.cell
@@ -3938,8 +3596,12 @@ export class DiagramEditor extends EventBus {
               this._selection instanceof DiagramNode
                 ? this._nodePropertiesPanel
                 : this._edgePropertiesPanel;
+            const editProp =
+              this._selection instanceof DiagramNode
+                ? ((this._selection.constructor as any).__editProp ?? 'label')
+                : 'label';
             const labelInput = panel.querySelector(
-              '[data-prop="label"]',
+              `[data-prop="${editProp}"]`,
             ) as HTMLInputElement | null;
             if (labelInput) {
               labelInput.focus();
@@ -3949,9 +3611,7 @@ export class DiagramEditor extends EventBus {
           return;
         }
 
-        if (isTyping) {
-          return;
-        }
+        if (isTyping) return;
 
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -3961,6 +3621,24 @@ export class DiagramEditor extends EventBus {
         if (event.key === 'Delete' || event.key === 'Backspace') {
           event.preventDefault();
           this._deleteSelected();
+          return;
+        }
+        if (event.key === '0' && !event.ctrlKey && !event.metaKey) {
+          event.preventDefault();
+          this.zoomReset();
+          return;
+        }
+        if (event.key === 'Tab') {
+          event.preventDefault();
+          const nodes = [...this._nodeMap.values()];
+          if (nodes.length === 0) return;
+          const currentIndex =
+            this._selection instanceof DiagramNode
+              ? nodes.indexOf(this._selection)
+              : -1;
+          const nextIndex = (currentIndex + 1) % nodes.length;
+          this._deselectAll();
+          nodes[nextIndex].select();
           return;
         }
         if (event.key === '-' && !event.ctrlKey && !event.metaKey) {
@@ -4044,7 +3722,6 @@ export class DiagramEditor extends EventBus {
               : event.key === 'ArrowDown'
                 ? this.gridSize
                 : 0;
-
           if (this._selection instanceof DiagramNode) {
             this._selection.moveBy(deltaX, deltaY);
           } else if (!this._selection) {
@@ -4057,25 +3734,39 @@ export class DiagramEditor extends EventBus {
         }
       },
     );
+
+    this._canvasArea.addEventListener('keyup', (event: KeyboardEvent) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (!(this._selection instanceof DiagramNode)) return;
+      const onKeyUp = (this._selection.constructor as any).__onKeyUp;
+      if (onKeyUp) onKeyUp(this._selection, event.key);
+    });
+
+    // Ensure keyup always reaches the canvas even if focus briefly moved
+    document.addEventListener('keyup', (event: KeyboardEvent) => {
+      if (document.activeElement === this._canvasArea) return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (!(this._selection instanceof DiagramNode)) return;
+      const onKeyUp = (this._selection.constructor as any).__onKeyUp;
+      if (onKeyUp) onKeyUp(this._selection, event.key);
+    });
   }
 
   private _attachTouchListeners(): void {
     this._renderer.el.addEventListener(
       'touchstart',
       (event: TouchEvent) => {
-        if (!this._isMobile()) {
-          return;
-        }
-
+        if (!this._isMobile()) return;
         if (event.touches.length === 1) {
           const touch = event.touches[0];
           if (
             document
               .elementFromPoint(touch.clientX, touch.clientY)
               ?.closest('.joint-cell')
-          ) {
+          )
             return;
-          }
           event.stopPropagation();
           this._touchState = {
             type: 'pan',
@@ -4102,9 +3793,7 @@ export class DiagramEditor extends EventBus {
     this._renderer.el.addEventListener(
       'touchmove',
       (event: TouchEvent) => {
-        if (!this._isMobile() || !this._touchState) {
-          return;
-        }
+        if (!this._isMobile() || !this._touchState) return;
         event.preventDefault();
         const state = this._touchState;
 
@@ -4149,9 +3838,7 @@ export class DiagramEditor extends EventBus {
     this._renderer.el.addEventListener(
       'touchend',
       (event: TouchEvent) => {
-        if (!this._isMobile()) {
-          return;
-        }
+        if (!this._isMobile()) return;
         if (this._touchState?.type === 'pinch' && event.touches.length === 1) {
           const touch = event.touches[0];
           this._touchState = {
@@ -4201,9 +3888,7 @@ export class DiagramEditor extends EventBus {
       const element = panel.querySelector(
         `[data-prop="${prop}"]`,
       ) as HTMLInputElement | null;
-      if (element) {
-        element.value = value ?? '';
-      }
+      if (element) element.value = value ?? '';
     };
 
     setField('label', node.label);
@@ -4225,30 +3910,32 @@ export class DiagramEditor extends EventBus {
       (node.constructor as any).__visibleProps ?? null;
     const isPropVisible = (prop: BuiltInNodeProp) =>
       visibleProps === null || visibleProps.includes(prop);
-
     panel.querySelectorAll<HTMLElement>('[data-builtin-prop]').forEach((el) => {
-      const prop = el.dataset.builtinProp as BuiltInNodeProp;
-      el.style.display = isPropVisible(prop) ? '' : 'none';
+      el.style.display = isPropVisible(
+        el.dataset.builtinProp as BuiltInNodeProp,
+      )
+        ? ''
+        : 'none';
     });
 
     panel.querySelector('.wf-custom-props')?.remove();
     const schema = node.getSchema?.() ?? {};
-    if (!Object.keys(schema).length) {
-      return;
-    }
+    if (!Object.keys(schema).length) return;
 
     const customSection = this._makeElement('div', 'wf-custom-props');
-    const divider = customSection.appendChild(this._makeElement('div'));
-    divider.style.cssText = `border-top:1px solid ${COLOR_DIVIDER}; margin:4px 0;`;
+    const hasVisibleBuiltIns = visibleProps === null || visibleProps.length > 0;
+    if (hasVisibleBuiltIns) {
+      const divider = customSection.appendChild(this._makeElement('div'));
+      divider.style.cssText = `border-top:1px solid ${COLOR_DIVIDER}; margin:4px 0;`;
+    }
 
     Object.entries(schema).forEach(([key, fieldDef]) => {
       const fieldDefinition = fieldDef as FieldDefinition;
       if (
         fieldDefinition.visible === false ||
         fieldDefinition.type === 'object'
-      ) {
+      )
         return;
-      }
 
       const group = customSection.appendChild(
         this._makeElement('div', 'wf-prop-group'),
@@ -4275,6 +3962,7 @@ export class DiagramEditor extends EventBus {
       } else if (fieldDefinition.type === 'textarea') {
         input = this._makeElement('textarea') as HTMLTextAreaElement;
         (input as HTMLTextAreaElement).value = currentValue ?? '';
+        input.dataset.prop = key;
       } else if (fieldDefinition.type === 'boolean') {
         input = this._makeElement('input') as HTMLInputElement;
         (input as HTMLInputElement).type = 'checkbox';
@@ -4291,7 +3979,6 @@ export class DiagramEditor extends EventBus {
         const hexInput = this._makeElement('input') as HTMLInputElement;
         hexInput.type = 'text';
         hexInput.value = currentValue ?? fieldDefinition.default ?? '#000000';
-
         picker.addEventListener('input', () => {
           hexInput.value = picker.value;
           node.setCustomProperty(key, picker.value);
@@ -4300,7 +3987,6 @@ export class DiagramEditor extends EventBus {
           picker.value = hexInput.value;
           node.setCustomProperty(key, hexInput.value);
         });
-
         row.appendChild(picker);
         row.appendChild(hexInput);
         group.appendChild(row);
@@ -4310,30 +3996,25 @@ export class DiagramEditor extends EventBus {
         (input as HTMLInputElement).type =
           fieldDefinition.type === 'number' ? 'number' : 'text';
         (input as HTMLInputElement).value = currentValue ?? '';
-        if (fieldDefinition.min !== undefined) {
+        input.dataset.prop = key;
+        if (fieldDefinition.min !== undefined)
           (input as HTMLInputElement).min = String(fieldDefinition.min);
-        }
-        if (fieldDefinition.max !== undefined) {
+        if (fieldDefinition.max !== undefined)
           (input as HTMLInputElement).max = String(fieldDefinition.max);
-        }
       }
 
-      if (fieldDefinition.readonly) {
-        (input as HTMLInputElement).disabled = true;
-      }
+      if (fieldDefinition.readonly) (input as HTMLInputElement).disabled = true;
       group.appendChild(input);
 
       input.addEventListener(
         fieldDefinition.type === 'boolean' ? 'change' : 'input',
         () => {
           let newValue: any;
-          if (fieldDefinition.type === 'boolean') {
+          if (fieldDefinition.type === 'boolean')
             newValue = (input as HTMLInputElement).checked;
-          } else if (fieldDefinition.type === 'number') {
+          else if (fieldDefinition.type === 'number')
             newValue = parseFloat((input as HTMLInputElement).value);
-          } else {
-            newValue = input.value;
-          }
+          else newValue = input.value;
           node.setCustomProperty(key, newValue);
         },
       );
@@ -4348,9 +4029,7 @@ export class DiagramEditor extends EventBus {
       const element = panel.querySelector(
         `[data-prop="${prop}"]`,
       ) as HTMLInputElement | null;
-      if (element) {
-        element.value = value ?? '';
-      }
+      if (element) element.value = value ?? '';
     };
 
     setField('label', edge.label);
@@ -4402,7 +4081,6 @@ export class DiagramEditor extends EventBus {
       this._renderer.translate(previousTranslation.tx, previousTranslation.ty);
     }, SIDEBAR_RESIZE_INTERVAL);
     setTimeout(() => clearInterval(interval), SIDEBAR_ANIM_DURATION);
-
     this._updateMobileButtonVisibility();
   }
 
@@ -4419,9 +4097,7 @@ export class DiagramEditor extends EventBus {
   }
 
   private _collapseAllSidebarsOnMobile(): void {
-    if (!this._isMobile()) {
-      return;
-    }
+    if (!this._isMobile()) return;
     const previousTranslation = this._renderer.translate();
     this._setSidebarCollapsed(this._leftSidebar, true);
     this._setSidebarCollapsed(this._rightSidebar, true);
@@ -4435,9 +4111,7 @@ export class DiagramEditor extends EventBus {
   }
 
   private _duplicateSelected(): void {
-    if (!(this._selection instanceof DiagramNode)) {
-      return;
-    }
+    if (!(this._selection instanceof DiagramNode)) return;
     const bbox = this._selection.cell.getBBox();
     const openPosition = this._findOpenPosition(
       bbox.x + DUPLICATE_OFFSET,
@@ -4448,7 +4122,6 @@ export class DiagramEditor extends EventBus {
     const clonedCell = this._selection.cell.clone();
     clonedCell.translate(openPosition.x - bbox.x, openPosition.y - bbox.y);
     clonedCell.addTo(this._graph);
-
     const copy = new (this._selection.constructor as NodeConstructor)({
       label: this._selection.label,
     });
@@ -4460,18 +4133,14 @@ export class DiagramEditor extends EventBus {
   }
 
   private _deleteSelected(): void {
-    if (!this._selection) {
-      return;
-    }
+    if (!this._selection) return;
     const item = this._selection;
     this._deselectAll();
     item.remove();
   }
 
   private _focusCameraOnSelection(): void {
-    if (!this._selection) {
-      return;
-    }
+    if (!this._selection) return;
     const model =
       this._selection instanceof DiagramNode
         ? this._selection.cell
@@ -4486,23 +4155,15 @@ export class DiagramEditor extends EventBus {
   }
 
   private _updateConnectionPorts(cell: any): void {
-    if (!this._autoPortsOn || this._isLoading) {
-      return;
-    }
+    if (!this._autoPortsOn || this._isLoading) return;
 
     this._graph.getConnectedLinks(cell).forEach((link: any) => {
-      if (typeof link.get('sourcePort') === 'number') {
-        return;
-      }
-      if (typeof link.get('targetPort') === 'number') {
-        return;
-      }
+      if (typeof link.get('sourcePort') === 'number') return;
+      if (typeof link.get('targetPort') === 'number') return;
 
       const sourceCell = link.getSourceElement();
       const targetCell = link.getTargetElement();
-      if (!sourceCell || !targetCell) {
-        return;
-      }
+      if (!sourceCell || !targetCell) return;
 
       const getCenterOf = (element: any): Point => {
         const position = element.position();
@@ -4549,7 +4210,6 @@ export class DiagramEditor extends EventBus {
         );
         const portPositions = element.getPortsPositions('all');
         const size = element.size();
-
         let bestPortId: string | null = null;
         let bestAngleDiff = Infinity;
         let bestPortIdFallback: string | null = null;
@@ -4558,21 +4218,16 @@ export class DiagramEditor extends EventBus {
         element.getPorts().forEach((port: any) => {
           const position = portPositions[port.id];
           if (!position) return;
-
           const portAngle = Math.atan2(
             position.y - size.height / 2,
             position.x - size.width / 2,
           );
           let angleDiff = Math.abs(angleToward - portAngle);
-          if (angleDiff > Math.PI) {
-            angleDiff = 2 * Math.PI - angleDiff;
-          }
-
+          if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
           if (angleDiff < bestAngleDiffFallback) {
             bestAngleDiffFallback = angleDiff;
             bestPortIdFallback = port.id;
           }
-
           if (!avoidPortIds.has(port.id) && angleDiff < bestAngleDiff) {
             bestAngleDiff = angleDiff;
             bestPortId = port.id;
@@ -4584,10 +4239,8 @@ export class DiagramEditor extends EventBus {
 
       const sourceCenter = getCenterOf(sourceCell);
       const targetCenter = getCenterOf(targetCell);
-
       const sourceAvoid = getUsedTargetPortIds(sourceCell);
       const targetAvoid = getUsedSourcePortIds(targetCell);
-
       const bestSourcePort = getBestPortFacing(
         sourceCell,
         targetCenter,
@@ -4639,9 +4292,7 @@ export class DiagramEditor extends EventBus {
     className: string = '',
   ): HTMLElementTagNameMap[K] {
     const element = document.createElement(tag);
-    if (className) {
-      element.className = className;
-    }
+    if (className) element.className = className;
     return element;
   }
 
@@ -4704,28 +4355,21 @@ export class DiagramEditor extends EventBus {
         clearance,
       );
       return this._graph.getElements().some((element: any) => {
-        if (excludeCell && element.id === excludeCell.id) {
-          return false;
-        }
+        if (excludeCell && element.id === excludeCell.id) return false;
         return testRect.intersect(element.getBBox().clone().inflate(clearance));
       });
     };
 
-    if (!isBlocked(x, y)) {
-      return { x, y };
-    }
+    if (!isBlocked(x, y)) return { x, y };
 
     for (let radius = 1; radius < SPIRAL_SEARCH_LIMIT; radius++) {
       for (let deltaX = -radius; deltaX <= radius; deltaX++) {
         for (let deltaY = -radius; deltaY <= radius; deltaY++) {
-          if (Math.abs(deltaX) !== radius && Math.abs(deltaY) !== radius) {
+          if (Math.abs(deltaX) !== radius && Math.abs(deltaY) !== radius)
             continue;
-          }
           const testX = x + deltaX * this.gridSize;
           const testY = y + deltaY * this.gridSize;
-          if (!isBlocked(testX, testY)) {
-            return { x: testX, y: testY };
-          }
+          if (!isBlocked(testX, testY)) return { x: testX, y: testY };
         }
       }
     }
