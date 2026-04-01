@@ -755,7 +755,6 @@ export class DiagramNode extends EventBus {
     if (this.cell) {
       this.cell.set('imageUrl', value);
       this.cell.attr('image/xlink:href', value);
-      this.cell.attr('image/display', value ? 'block' : 'none');
       this._resizeToFitContent();
     }
     this.emit('change', this);
@@ -2479,6 +2478,7 @@ export class DiagramEditor extends EventBus {
       width: imageWidth,
       height: imageHeight,
     });
+    cell.attr('image/display', imageUrl ? 'block' : 'none');
 
     if (descriptionText) {
       const contentStartY = (height - totalTextHeight) / 2;
