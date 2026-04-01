@@ -14,13 +14,14 @@ A lightweight, framework-agnostic diagram editor built on JointJS. Supports vani
     - **Framework agnostic** — works with vanilla JS/TS; includes a first-class Angular component
     - **Event-driven API** — subscribe to node, edge, and selection lifecycle events
     - **Built-in node shapes** — Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, and Octagon
-    - **Custom node types** — define your own shapes with typed schemas, default options, and render functions via `DiagramNode.define()`
+    - **Custom node types** — define your own shapes with typed schemas, default options, and change handlers via `DiagramNode.define()`
     - **Edge styling** — configurable line color, width, style (solid/dashed/dotted), arrow markers, and connector routing (elbow/straight/curved)
 - UX friendly
     - **Auto port switching** — edges automatically connect to the nearest port as nodes are moved
     - **Auto arrange** — one-call Dagre-powered layout with `autoArrange()`
     - **Zoom and pan** — mouse wheel zoom, click-and-drag pan, zoom to fit, and keyboard shortcuts
-    - **Keyboard shortcuts** — arrow keys to nudge, Delete/Backspace to remove, Ctrl+C/V to copy/paste, +/- to zoom
+    - **Keyboard shortcuts** — arrow keys to nudge, Delete/Backspace to remove, Ctrl+C/V to copy/paste, Tab to cycle selection, +/- to zoom, 0 to reset zoom, Enter/F2 to edit
+    - **Duplicate** — duplicate nodes via the properties panel, context menu, or Ctrl+V after Ctrl+C
     - **Touch support** — single-finger pan and two-finger pinch-to-zoom on mobile
     - **Properties panel** — built-in sidebar for editing node and edge properties, including image upload
 - Data friendly
@@ -182,32 +183,47 @@ In `src/styles.scss`:
 
 ### DiagramEditor
 
-| Name                                                                         | Type                          | Description                                                                                                          |
-| ---------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `addNode(node: DiagramNode, x?: number, y?: number)`                         | `Promise<DiagramNode>`        | Add a node to the canvas                                                                                             |
-| `removeNode(node: DiagramNode)`                                              | `void`                        | Remove a node                                                                                                        |
-| `clear()`                                                                    | `DiagramEditor`               | Remove all nodes and edges                                                                                           |
-| `getNodes()`                                                                 | `DiagramNode[]`               | Get all nodes                                                                                                        |
-| `getEdges()`                                                                 | `Edge[]`                      | Get all edges                                                                                                        |
-| `serialize(includeTypes?: boolean)`                                          | `string`                      | Serialize diagram to JSON string. Includes node type definitions by default                                          |
-| `serializeNodes()`                                                           | `{ nodes: SerializedNode[], edges: SerializedEdge[] }` | Serialize only the nodes and edges (no type definitions)            |
-| `serializeTypes()`                                                           | `SerializedNodeType[]`        | Serialize only the registered node type definitions                                                                  |
-| `deserialize(json: string \| SerializedDiagram)`                             | `Promise<DiagramEditor>`      | Restore diagram from JSON. Re-registers node types if present in the data                                            |
-| `render(container: HTMLElement)`                                             | `Promise<DiagramEditor>`      | Render a headless editor into a DOM container                                                                        |
-| `registerNodeType(label: string, NodeClass: NodeConstructor, name?: string)` | `void`                        | Register a custom node type with an optional friendly display name                                                   |
-| `registerBuiltInNodes()`                                                     | `void`                        | Register all built-in node types (Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, Octagon) |
-| `clearRegisteredNodes()`                                                     | `DiagramEditor`               | Unregister all node types and clear the library sidebar                                                              |
-| `autoArrange()`                                                              | `DiagramEditor`               | Auto-arrange nodes using Dagre layout                                                                                |
-| `zoomToFit()`                                                                | `DiagramEditor`               | Zoom to fit all content                                                                                              |
-| `zoomIn(factor?: number)`                                                    | `DiagramEditor`               | Zoom in                                                                                                              |
-| `zoomOut(factor?: number)`                                                   | `DiagramEditor`               | Zoom out                                                                                                             |
-| `zoomReset()`                                                                | `DiagramEditor`               | Reset zoom to 1:1                                                                                                    |
-| `centerContent()`                                                            | `DiagramEditor`               | Center the canvas                                                                                                    |
-| `clearSelection()`                                                           | `DiagramEditor`               | Clear current selection                                                                                              |
-| `getSelectedItem()`                                                          | `DiagramNode \| Edge \| null` | Get selected node or edge                                                                                            |
-| `setAutoPortSwitching(enabled: boolean)`                                     | `DiagramEditor`               | Toggle automatic port switching                                                                                      |
-| `panTo(x: number, y: number)`                                                | `DiagramEditor`               | Pan canvas to position                                                                                               |
-| `getZoomLevel()`                                                             | `number`                      | Get current zoom level                                                                                               |
+| Name                                                                         | Type                                              | Description                                                                                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `addNode(node: DiagramNode, x?: number, y?: number)`                         | `Promise<DiagramNode>`                            | Add a node to the canvas. `x` and `y` are canvas-area pixel coordinates; omit to place at the canvas center         |
+| `removeNode(node: DiagramNode)`                                              | `void`                                            | Remove a node                                                                                                        |
+| `clear()`                                                                    | `DiagramEditor`                                   | Remove all nodes and edges                                                                                           |
+| `getNodes()`                                                                 | `DiagramNode[]`                                   | Get all nodes                                                                                                        |
+| `getEdges()`                                                                 | `Edge[]`                                          | Get all edges                                                                                                        |
+| `serialize(includeTypes?: boolean)`                                          | `string`                                          | Serialize diagram to JSON string. Includes node type definitions by default                                          |
+| `serializeNodes()`                                                           | `{ nodes: SerializedNode[], edges: SerializedEdge[] }` | Serialize only the nodes and edges (no type definitions)                                                        |
+| `serializeTypes()`                                                           | `SerializedNodeType[]`                            | Serialize only the registered node type definitions                                                                  |
+| `deserialize(json: string \| SerializedDiagram)`                             | `Promise<DiagramEditor>`                          | Restore diagram from JSON. Re-registers node types if present in the data                                            |
+| `render(container: HTMLElement)`                                             | `Promise<DiagramEditor>`                          | Render a headless editor into a DOM container                                                                        |
+| `registerNodeType(label: string, NodeClass: NodeConstructor, name?: string)` | `void`                                            | Register a custom node type with an optional friendly display name                                                   |
+| `registerBuiltInNodes()`                                                     | `void`                                            | Register all built-in node types (Rectangle, Square, Ellipse, Circle, Diamond, Triangle, Hexagon, Pentagon, Octagon) |
+| `clearRegisteredNodes()`                                                     | `DiagramEditor`                                   | Unregister all node types and clear the library sidebar                                                              |
+| `autoArrange()`                                                              | `Promise<DiagramEditor>`                          | Auto-arrange nodes using Dagre layout. Clears all custom edge vertices before laying out                             |
+| `zoomToFit()`                                                                | `DiagramEditor`                                   | Zoom to fit all content                                                                                              |
+| `zoomIn(factor?: number)`                                                    | `DiagramEditor`                                   | Zoom in                                                                                                              |
+| `zoomOut(factor?: number)`                                                   | `DiagramEditor`                                   | Zoom out                                                                                                             |
+| `zoomReset()`                                                                | `DiagramEditor`                                   | Reset zoom to 1:1                                                                                                    |
+| `centerContent()`                                                            | `DiagramEditor`                                   | Center the canvas                                                                                                    |
+| `clearSelection()`                                                           | `DiagramEditor`                                   | Clear current selection                                                                                              |
+| `getSelectedItem()`                                                          | `DiagramNode \| Edge \| null`                     | Get selected node or edge                                                                                            |
+| `setAutoPortSwitching(enabled: boolean)`                                     | `DiagramEditor`                                   | Toggle automatic port switching                                                                                      |
+| `panTo(x: number, y: number)`                                                | `DiagramEditor`                                   | Pan canvas to position                                                                                               |
+| `getZoomLevel()`                                                             | `number`                                          | Get current zoom level                                                                                               |
+
+### Keyboard Shortcuts
+
+| Shortcut                  | Action                                      |
+| ------------------------- | ------------------------------------------- |
+| `Arrow keys`              | Nudge selected node by one grid unit        |
+| `Delete` / `Backspace`    | Remove selected node or edge                |
+| `Ctrl+C`                  | Copy selected node                          |
+| `Ctrl+V`                  | Paste copied node                           |
+| `Tab` / `Shift+Tab`       | Cycle selection forward / backward          |
+| `Enter` / `F2`            | Open properties panel and focus label field |
+| `Escape`                  | Deselect                                    |
+| `+` / `=`                 | Zoom in                                     |
+| `-`                       | Zoom out                                    |
+| `0`                       | Reset zoom to 1:1                           |
 
 ### Nodes
 
@@ -276,9 +292,9 @@ All node classes extend `DiagramNode` and share the following properties and met
 ```typescript
 // A registered node type entry in serialized data.
 // Built-in types are serialized as plain strings (their nodeClass).
-// Custom types include their full definition. renderFn is never serialized —
-// re-register the type with the same renderFn after import and it will be
-// preserved automatically.
+// Custom types include their full definition. serialize/deserialize/onChange
+// fields are stripped from the schema — re-register the type with the same
+// handlers after import and they will be preserved automatically.
 type SerializedNodeType =
     | string
     | {
@@ -288,6 +304,7 @@ type SerializedNodeType =
           defaultOptions: NodeOptions;
           schema: Schema;          // serialize/deserialize/onChange fields are stripped
           visibleProps?: BuiltInNodeProp[];
+          editProp?: string;       // which prop Enter/F2 focuses in the properties panel
       };
 
 interface SerializedDiagram {
@@ -327,7 +344,7 @@ editor.on("selection:change", (item) => {});
 
 ### Custom Node Types
 
-Use `DiagramNode.define()` to create custom node types with a schema and render function:
+Use `DiagramNode.define()` to create custom node types with a schema and change handlers:
 
 ```typescript
 import { DiagramNode, RectangleNode } from "@relevance/workflow-editor";
@@ -342,7 +359,17 @@ const TaskNode = (DiagramNode as any).define(
         schema: {
             assignee: { label: "Assignee", type: "text", default: "" },
             effort: { label: "Effort", type: "number", default: 1, min: 1, max: 10 },
-            done: { label: "Done", type: "boolean", default: false },
+            done: {
+                label: "Done",
+                type: "boolean",
+                default: false,
+                // onChange is called whenever this property changes.
+                // Not serialized — re-register the type with the same schema after import.
+                onChange: (node, value) => {
+                    node.backgroundColor = value ? "#d4edda" : "#f0f8ff";
+                    node.borderColor = value ? "#28a745" : "#adb5bd";
+                },
+            },
             priority: {
                 label: "Priority",
                 type: "choice",
@@ -351,18 +378,16 @@ const TaskNode = (DiagramNode as any).define(
             },
         },
 
-        // Render function — called when custom props change.
-        // Not serialized; re-register with the same renderFn after import
-        // and it will be preserved automatically.
-        renderFn: (node) => {
-            node.backgroundColor = node.getCustomProperty("done") ? "#d4edda" : "#f0f8ff";
-            node.borderColor = node.getCustomProperty("done") ? "#28a745" : "#adb5bd";
-        },
-
         // Optional: restrict which built-in props appear in the properties panel.
         // Omit this field entirely to show all built-in props.
         // Pass an empty array to hide all built-in props.
         visibleProps: ["label", "backgroundColor", "borderColor"],
+
+        // Optional: which prop Enter/F2 focuses in the properties panel (default: "label")
+        editProp: "label",
+
+        // Optional: called on keyup when this node is selected
+        onKeyUp: (node, key) => { /* handle key */ },
     },
 );
 
@@ -378,12 +403,13 @@ task.setCustomProperty("done", true);
 
 #### `DefineOptions`
 
-| Field          | Type                              | Description                                                                                     |
-| -------------- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `defaults`     | `NodeOptions`                     | Default built-in property values applied to every new instance                                  |
-| `schema`       | `Schema`                          | Custom property definitions                                                                     |
-| `renderFn`     | `(node: DiagramNode) => void`     | Called after any custom property changes. Not serialized                                        |
-| `visibleProps` | `BuiltInNodeProp[]`               | Which built-in props appear in the panel. Omit to show all; pass `[]` to hide all              |
+| Field          | Type                                          | Description                                                                                     |
+| -------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `defaults`     | `NodeOptions`                                 | Default built-in property values applied to every new instance                                  |
+| `schema`       | `Schema`                                      | Custom property definitions                                                                     |
+| `visibleProps` | `BuiltInNodeProp[]`                           | Which built-in props appear in the panel. Omit to show all; pass `[]` to hide all              |
+| `editProp`     | `string`                                      | Which prop Enter/F2 focuses in the properties panel. Defaults to `"label"`                      |
+| `onKeyUp`      | `(node: DiagramNode, key: string) => void`    | Called on keyup when this node type is selected                                                 |
 
 #### `BuiltInNodeProp`
 
@@ -407,19 +433,19 @@ type BuiltInNodeProp =
 
 Each key in `schema` is a `FieldDefinition`:
 
-| Field         | Type                                                              | Description                                              |
-| ------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| `label`       | `string`                                                          | Display name in the properties panel                     |
-| `type`        | `'text' \| 'number' \| 'textarea' \| 'boolean' \| 'choice' \| 'color' \| 'object'` | Input type. `object` fields are not shown in the panel and are not synced to the cell |
-| `default`     | `any`                                                             | Initial value                                            |
-| `choices`     | `Record<string, string>`                                          | Options map for `choice` type (`{ value: label }`)       |
-| `min`         | `number`                                                          | Minimum value for `number` type                          |
-| `max`         | `number`                                                          | Maximum value for `number` type                          |
-| `visible`     | `boolean`                                                         | Set to `false` to hide from the properties panel         |
-| `readonly`    | `boolean`                                                         | Renders the field as disabled in the properties panel    |
-| `serialize`   | `(value: any, node: DiagramNode) => any`                         | Transform value before serialization. Not written to JSON|
-| `deserialize` | `(raw: any, node: DiagramNode) => any`                           | Transform value after deserialization. Not written to JSON|
-| `onChange`    | `(node: DiagramNode, newValue: any, oldValue: any) => void`      | Called after the value changes. Not written to JSON      |
+| Field         | Type                                                                                    | Description                                                                           |
+| ------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `label`       | `string`                                                                                | Display name in the properties panel                                                  |
+| `type`        | `'text' \| 'number' \| 'textarea' \| 'boolean' \| 'choice' \| 'color' \| 'object'`    | Input type. `object` fields are not shown in the panel and are not synced to the cell |
+| `default`     | `any`                                                                                   | Initial value                                                                         |
+| `choices`     | `Record<string, string>`                                                                | Options map for `choice` type (`{ value: label }`)                                    |
+| `min`         | `number`                                                                                | Minimum value for `number` type                                                       |
+| `max`         | `number`                                                                                | Maximum value for `number` type                                                       |
+| `visible`     | `boolean`                                                                               | Set to `false` to hide from the properties panel                                      |
+| `readonly`    | `boolean`                                                                               | Renders the field as disabled in the properties panel                                 |
+| `serialize`   | `(value: any, node: DiagramNode) => any`                                               | Transform value before serialization. Not written to JSON                             |
+| `deserialize` | `(raw: any, node: DiagramNode) => any`                                                 | Transform value after deserialization. Not written to JSON                            |
+| `onChange`    | `(node: DiagramNode, newValue: any, oldValue: any) => void`                            | Called after the value changes. Not written to JSON                                   |
 
 ---
 
