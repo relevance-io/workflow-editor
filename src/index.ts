@@ -1601,36 +1601,32 @@ export class DiagramEditor extends EventBus {
       this._setSidebarCollapsed(this._rightSidebar, true);
     }
 
-    const nodes = [...this._nodeMap.values()];
-    const positioned = nodes.filter(
-      (n) => n.x !== undefined && n.y !== undefined,
-    );
-    const unpositioned = nodes.filter(
-      (n) => n.x === undefined || n.y === undefined,
-    );
-    const hasPartialPositioning =
-      positioned.length > 0 && unpositioned.length > 0;
-    const shouldAutoArrange = unpositioned.length > 0;
-
-    if (hasPartialPositioning) {
-      console.warn(
-        `DiagramEditor.render(): ${positioned.length} node(s) have explicit positions and ` +
-          `${unpositioned.length} do not. Ignoring all positions and falling back to auto-arrange.`,
-      );
-    }
-
+    // Switch to live mode and replay headless state through deserialize
     const serialized = JSON.parse(this.serialize()) as SerializedDiagram;
+    this._nodeMap.clear();
+    this._edgeMap.clear();
+    this._headlessEdges = [];
     this._isHeadless = false;
 
     if (
       serialized.nodes.length > 0 ||
       (serialized.nodeTypes && serialized.nodeTypes.length > 0)
     ) {
-      if (shouldAutoArrange)
+      const shouldAutoArrange = serialized.nodes.some(
+        (n) => n.x === undefined || n.y === undefined,
+      );
+      const hasPartialPositioning =
+        serialized.nodes.some((n) => n.x !== undefined) && shouldAutoArrange;
+      if (hasPartialPositioning) {
+        console.warn(
+          `DiagramEditor.render(): some nodes have explicit positions and some do not. ` +
+            `Ignoring all positions and falling back to auto-arrange.`,
+        );
         serialized.nodes.forEach((n) => {
           delete n.x;
           delete n.y;
         });
+      }
       await this.deserialize(serialized);
       if (shouldAutoArrange) await this.autoArrange();
     }
@@ -1909,6 +1905,10 @@ export class DiagramEditor extends EventBus {
   }
 
   private _doAutoArrange(): void {
+    // Remove all custom vertices before layout — stale bend points conflict
+    // with the manhattan router and produce very weird paths after rearranging.
+    this._graph.getLinks().forEach((link: any) => link.vertices([]));
+
     const clearance = this.clearanceUnits * this.gridSize;
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setGraph({
@@ -2173,11 +2173,7 @@ export class DiagramEditor extends EventBus {
       }
     }
 
-    if (!this._isHeadless) this._deselectAll();
-    this._nodeMap.clear();
-    this._edgeMap.clear();
-    this._headlessEdges = [];
-    if (!this._isHeadless) this._graph.clear();
+    this.clear();
 
     const nodeClassMap: Record<string, NodeConstructor> = Object.fromEntries(
       Object.values(this._registeredNodeTypes).map((cls) => [
@@ -2186,9 +2182,6 @@ export class DiagramEditor extends EventBus {
       ]),
     );
 
-    const autoPortsOn = this._autoPortsOn;
-    this._autoPortsOn = false;
-    this._isLoading = true;
     const oldIdToNode: Record<string, DiagramNode> = {};
 
     for (const nodeData of nodeDataList) {
@@ -2199,100 +2192,20 @@ export class DiagramEditor extends EventBus {
         ...nodeData.props,
         ...nodeData.customProps,
       });
-      node.editor = this;
 
-      const applyCustomProps = (n: DiagramNode, raw: Record<string, any>) => {
-        Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
-          const fieldDefinition = fieldDef as FieldDefinition;
-          if (!(key in raw)) return;
-          const liveValue = fieldDefinition.deserialize
-            ? fieldDefinition.deserialize(raw[key], n)
-            : raw[key];
-          n.customProps[key] = liveValue;
-        });
-        Object.entries(n.schema as Schema).forEach(([key, fieldDef]) => {
-          const fieldDefinition = fieldDef as FieldDefinition;
-          if (!(key in raw)) return;
-          fieldDefinition.onChange?.(n, n.customProps[key], undefined);
-        });
-      };
-      applyCustomProps(node, nodeData.customProps);
-
-      if (this._isHeadless) {
-        const id = nodeData.id ?? `node-${Math.random().toString(36).slice(2)}`;
-        (node as any)._headlessId = id;
-        if (nodeData.x !== undefined) node.x = nodeData.x;
-        if (nodeData.y !== undefined) node.y = nodeData.y;
-        this._nodeMap.set(id, node);
-        node.on('change', (changedNode: DiagramNode) =>
-          this.emit('node:change', changedNode),
-        );
-        node.on('move', (movedNode: DiagramNode) =>
-          this.emit('node:move', movedNode),
-        );
-        oldIdToNode[nodeData.id] = node;
-        continue;
-      }
-
-      const portRadius = PORT_RADIUS;
-      const position: Point = { x: nodeData.x ?? 0, y: nodeData.y ?? 0 };
-      const cell = node._buildCell(position, joint.shapes, portRadius);
-      cell.attr('label/text', node._label);
-      cell.set('nodeClass', nodeData.nodeClass);
-      node.cell = cell;
-
-      // FIXME: This builtIns array is duplicated verbatim in define() and addNode().
-      // Extract to a module-level BUILT_IN_NODE_PROPS constant.
-      const builtIns: (keyof NodeOptions)[] = [
-        'label',
-        'labelColor',
-        'labelFontSize',
-        'description',
-        'descriptionColor',
-        'backgroundColor',
-        'borderColor',
-        'borderWidth',
-        'imageUrl',
-        'imageWidth',
-        'imageHeight',
-      ];
-      const initOptions: NodeOptions = node._initOptions || {};
-      builtIns.forEach((key) => {
-        const value = initOptions[key] ?? (node as any)[`_init_${key}`];
-        if (value !== undefined) (node as any)[key] = value;
-      });
-
-      Object.entries(node.customProps).forEach(([key, value]) =>
-        cell.set(`custom_${key}`, value),
-      );
-      cell.addTo(this._graph);
-      this._nodeMap.set(cell.id, node);
-
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-      this._fitNodeToContent(cell);
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-      this._renderer.updateViews();
-
-      // FIXME: This two-pass onChange firing is duplicated in define(), addNode(),
-      // and the drop handler. Extract to a shared fireOnChangeForAllProps helper.
+      // Rehydrate custom props through deserialize hooks
       Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
-        (fieldDef as FieldDefinition).onChange?.(
-          node,
-          node.customProps[key],
-          undefined,
-        );
+        const fieldDefinition = fieldDef as FieldDefinition;
+        if (!(key in nodeData.customProps)) return;
+        const liveValue = fieldDefinition.deserialize
+          ? fieldDefinition.deserialize(nodeData.customProps[key], node)
+          : nodeData.customProps[key];
+        node.customProps[key] = liveValue;
       });
 
-      node.on('change', (changedNode: DiagramNode) =>
-        this.emit('node:change', changedNode),
-      );
-      node.on('move', (movedNode: DiagramNode) =>
-        this.emit('node:move', movedNode),
-      );
+      const x = nodeData.x !== undefined ? nodeData.x : undefined;
+      const y = nodeData.y !== undefined ? nodeData.y : undefined;
+      await this.addNode(node, x, y);
       oldIdToNode[nodeData.id] = node;
     }
 
@@ -2301,15 +2214,6 @@ export class DiagramEditor extends EventBus {
       const targetNode = oldIdToNode[edgeData.targetId];
       if (!sourceNode || !targetNode) continue;
 
-      if (this._isHeadless) {
-        this._headlessEdges.push({
-          source: sourceNode,
-          target: targetNode,
-          props: { ...edgeData },
-        });
-        continue;
-      }
-
       const edge = sourceNode.connectTo(
         targetNode,
         edgeData.sourcePort,
@@ -2317,57 +2221,18 @@ export class DiagramEditor extends EventBus {
       );
       if (!edge) continue;
 
-      if (edgeData.label) edge.label = edgeData.label;
-      if (edgeData.labelColor) edge.labelColor = edgeData.labelColor;
-      if (edgeData.labelFontSize) edge.labelFontSize = edgeData.labelFontSize;
+      if (edgeData.label != null) edge.label = edgeData.label;
+      if (edgeData.labelColor != null) edge.labelColor = edgeData.labelColor;
+      if (edgeData.labelFontSize != null)
+        edge.labelFontSize = edgeData.labelFontSize;
       edge.lineColor = edgeData.lineColor;
       edge.lineWidth = edgeData.lineWidth;
       edge.lineStyle = edgeData.lineStyle;
       edge.sourceArrow = edgeData.sourceArrow;
       edge.targetArrow = edgeData.targetArrow;
       edge.connectorType = edgeData.connectorType;
-      if (edgeData.description) edge.description = edgeData.description;
+      if (edgeData.description != null) edge.description = edgeData.description;
       if (edgeData.vertices?.length) edge.link.vertices(edgeData.vertices);
-    }
-
-    this._autoPortsOn = autoPortsOn;
-    this._isLoading = false;
-
-    if (!this._isHeadless) {
-      const allCells = this._graph.getCells();
-      this._graph.resetCells(allCells);
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-
-      this._graph.getLinks().forEach((link: any) => {
-        const edge = this._edgeMap.get(link.id);
-        if (!edge) return;
-        const savedEdge = edgeDataList.find(
-          (data) =>
-            oldIdToNode[data.sourceId]?.cell.id === edge.source.cell.id &&
-            oldIdToNode[data.targetId]?.cell.id === edge.target.cell.id,
-        );
-        if (!savedEdge) return;
-        if (savedEdge.sourcePort != null)
-          link.set('sourcePort', savedEdge.sourcePort);
-        if (savedEdge.targetPort != null)
-          link.set('targetPort', savedEdge.targetPort);
-      });
-
-      if (this._autoPortsOn) {
-        this._graph.getLinks().forEach((link: any) => {
-          const edge = this._edgeMap.get(link.id);
-          if (!edge) return;
-          const savedEdge = edgeDataList.find(
-            (data) =>
-              oldIdToNode[data.sourceId]?.cell.id === edge.source.cell.id &&
-              oldIdToNode[data.targetId]?.cell.id === edge.target.cell.id,
-          );
-          if (savedEdge?.sourcePort == null) link.unset('sourcePort');
-          if (savedEdge?.targetPort == null) link.unset('targetPort');
-        });
-      }
     }
 
     this.emit('change');
@@ -2536,6 +2401,10 @@ export class DiagramEditor extends EventBus {
       return;
     }
 
+    // Force the view to flush any pending attr changes to the DOM before we
+    // measure bounding boxes — otherwise getBBox() returns stale dimensions.
+    this._renderer.updateViews();
+
     const labelElement = view.el.querySelector(
       '.label',
     ) as SVGTextElement | null;
@@ -2554,7 +2423,7 @@ export class DiagramEditor extends EventBus {
 
     const imageUrl: string = cell.get('imageUrl');
     const shapeType: ShapeType = cell.get('type');
-    const descriptionText: string = cell.attr('descriptionLabel/text') || '';
+    const descriptionText: string = cell.get('description') || '';
     const imageWidth: number = cell.get('imageWidth') || IMAGE_DEFAULT_WIDTH;
     const imageHeight: number = cell.get('imageHeight') || IMAGE_DEFAULT_HEIGHT;
     const imageSpacing = imageUrl ? IMAGE_SPACING : 0;
@@ -4281,12 +4150,12 @@ export class DiagramEditor extends EventBus {
 
   private _waitForRender(cell: any): Promise<any> {
     return new Promise((resolve) => {
-      const view = this._renderer.findViewByModel(cell);
-      if (!view) {
-        resolve(undefined);
-        return;
-      }
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve(view)));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const view = this._renderer.findViewByModel(cell);
+          resolve(view);
+        }),
+      );
     });
   }
 
