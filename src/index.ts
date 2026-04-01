@@ -3145,6 +3145,28 @@ export class DiagramEditor extends EventBus {
       this._handleEdgePropertyChange(event),
     );
 
+    const returnToCanvas = () => {
+      if (this._isMobile()) this._setSidebarCollapsed(this._rightSidebar, true);
+      (this._canvasArea as HTMLElement).focus();
+    };
+
+    [this._nodePropertiesPanel, this._edgePropertiesPanel].forEach((panel) => {
+      panel.addEventListener('keydown', (event: KeyboardEvent) => {
+        const target = event.target as HTMLElement;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          returnToCanvas();
+        } else if (
+          event.key === 'Enter' &&
+          target.tagName === 'INPUT' &&
+          (target as HTMLInputElement).type !== 'checkbox'
+        ) {
+          event.preventDefault();
+          returnToCanvas();
+        }
+      });
+    });
+
     this._canvasArea.addEventListener('dragover', (event) =>
       event.preventDefault(),
     );
@@ -3636,7 +3658,9 @@ export class DiagramEditor extends EventBus {
             this._selection instanceof DiagramNode
               ? nodes.indexOf(this._selection)
               : -1;
-          const nextIndex = (currentIndex + 1) % nodes.length;
+          const nextIndex = event.shiftKey
+            ? (currentIndex - 1 + nodes.length) % nodes.length
+            : (currentIndex + 1) % nodes.length;
           this._deselectAll();
           nodes[nextIndex].select();
           return;
