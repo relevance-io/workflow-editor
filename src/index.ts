@@ -910,8 +910,6 @@ export type BuiltInNodeProp =
 
       const merged: NodeOptions = { ...defaultOptions, ...options };
 
-      // FIXME: This builtIns array is duplicated verbatim in addNode() and deserialize().
-      // Extract to a module-level BUILT_IN_NODE_PROPS constant.
       const builtIns: (keyof NodeOptions)[] = [
         'label',
         'labelColor',
@@ -931,9 +929,6 @@ export type BuiltInNodeProp =
       });
       this._label = merged.label ?? defaultOptions.label ?? '';
 
-      // FIXME: This two-pass onChange firing pattern is duplicated in addNode(),
-      // deserialize(), and the drop handler. Extract to a shared module-level
-      // fireOnChangeForAllProps(node, schema) helper and call it from all four sites.
       // Pass 1: set all customProps silently
       Object.entries(schema).forEach(([key, fieldDef]) => {
         this.customProps[key] =
@@ -1723,8 +1718,6 @@ export class DiagramEditor extends EventBus {
     node.cell = cell;
     node.editor = this;
 
-    // FIXME: This builtIns array is duplicated verbatim in define() and deserialize().
-    // Extract to a module-level BUILT_IN_NODE_PROPS constant.
     const builtIns: (keyof NodeOptions)[] = [
       'label',
       'labelColor',
@@ -1751,15 +1744,9 @@ export class DiagramEditor extends EventBus {
     this._nodeMap.set(cell.id, node);
     this.clearSelection();
 
-    // FIXME: This async render-wait-resize-listeners sequence is duplicated in the
-    // custom-node and built-in drop handlers. Extract to a _finalizeAddedNode(node, cell)
-    // helper and call it from all three sites.
     const ready = (async () => {
       await this._waitForRender(cell);
       await this._resizeNodeAsync(cell);
-
-      // FIXME: This two-pass onChange firing is duplicated in define(), deserialize(),
-      // and the drop handler. Extract to a shared fireOnChangeForAllProps helper.
       Object.entries(node.schema as Schema).forEach(([key, fieldDef]) => {
         (fieldDef as FieldDefinition).onChange?.(
           node,
@@ -1794,6 +1781,10 @@ export class DiagramEditor extends EventBus {
     this._nodeMap.clear();
     this._edgeMap.clear();
     this._headlessEdges = [];
+    // TODO: Replace fixed 100ms delay with a CSS transition on _paperElement and
+    // set opacity to '1' after the last addNode resolves — prevents pop-in on
+    // large diagrams where rendering may exceed 100ms.
+    setTimeout(() => (this._paperElement.style.opacity = '1'), 100);
     this.emit('change');
     return this;
   }
@@ -1889,6 +1880,8 @@ export class DiagramEditor extends EventBus {
     return new Promise<this>((resolve) => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
+          // TODO: Replace getElements() iteration with getNodes().forEach(n => n._resizeToFitContent())
+          // to go through the public API instead of touching JointJS cells directly.
           this._graph
             .getElements()
             .forEach((cell: any) => this._fitNodeToContent(cell));
@@ -2172,6 +2165,7 @@ export class DiagramEditor extends EventBus {
       }
     }
 
+    this._paperElement.style.opacity = '0';
     this.clear();
 
     const nodeClassMap: Record<string, NodeConstructor> = Object.fromEntries(
@@ -3050,10 +3044,10 @@ export class DiagramEditor extends EventBus {
           y: event.clientY,
         });
 
-        // FIXME: This drop path reimplements addNode() inline — building the cell,
-        // setting attrs, adding to the graph, and running the async render loop manually.
-        // It also bypasses the _findOpenPosition centering logic that addNode() applies.
-        // Refactor to call addNode() with the computed drop coordinates instead.
+        // TODO: Refactor to call addNode() with the drop coordinates instead of
+        // reimplementing cell construction, graph insertion, and the async render
+        // loop inline. Note that dropPosition is in diagram coordinates — addNode()
+        // expects canvas-area pixel coordinates, so a conversion will be needed.
         const node = new NodeClass();
         const openPosition = this._findOpenPosition(
           dropPosition.x - NODE_DEFAULT_WIDTH / 2,
@@ -3073,10 +3067,6 @@ export class DiagramEditor extends EventBus {
         this._nodeMap.set(cell.id, node);
         this.clearSelection();
 
-        // FIXME: This async render-wait-resize-listeners sequence is duplicated in
-        // addNode() and the built-in drop handler below. Extract to _finalizeAddedNode.
-        // FIXME: This two-pass onChange firing is duplicated in define(), addNode(),
-        // and deserialize(). Extract to a shared fireOnChangeForAllProps helper.
         (async () => {
           await this._waitForRender(cell);
           await this._resizeNodeAsync(cell);
@@ -3111,8 +3101,9 @@ export class DiagramEditor extends EventBus {
         y: event.clientY,
       });
 
-      // FIXME: This drop path reimplements addNode() inline — same issue as the
-      // custom-node drop path above. Refactor to call addNode() with drop coordinates.
+      // TODO: Refactor to call addNode() with the drop coordinates instead of
+      // reimplementing cell construction, graph insertion, and the async render
+      // loop inline. Same coordinate conversion note as the custom-node drop above.
       const node = new match.cls({ label: label.toUpperCase() });
       const isSquarish = ['square', 'circle', 'diamond'].includes(droppedType);
       const width = isSquarish ? NODE_SQUARISH_SIZE : NODE_DEFAULT_WIDTH;
@@ -3132,8 +3123,6 @@ export class DiagramEditor extends EventBus {
       this._nodeMap.set(cell.id, node);
       this.clearSelection();
 
-      // FIXME: This async render-wait-resize-listeners sequence is duplicated in
-      // addNode() and the custom-node drop handler above. Extract to _finalizeAddedNode.
       (async () => {
         await this._waitForRender(cell);
         await this._resizeNodeAsync(cell);
@@ -3446,6 +3435,8 @@ export class DiagramEditor extends EventBus {
       if (node) {
         this._updateConnectionPorts(cell);
         node.emit('move', node);
+        // TODO: Replace with getEdges().forEach(e => e.link.toFront()) to go through
+        // the public API rather than querying JointJS links directly.
         this._graph.getLinks().forEach((link: any) => link.toFront());
       }
     });
@@ -3578,6 +3569,7 @@ export class DiagramEditor extends EventBus {
                 imageHeight: src.imageHeight,
                 ...src.customProps,
               }),
+              // TODO: Same diagram-vs-canvas coordinate issue as _duplicateSelected.
               bbox.x + bbox.width / 2 + DUPLICATE_OFFSET,
               bbox.y + bbox.height / 2 + DUPLICATE_OFFSET,
             );
@@ -4011,6 +4003,11 @@ export class DiagramEditor extends EventBus {
         imageHeight: src.imageHeight,
         ...src.customProps,
       }),
+      // TODO: _duplicateSelected and Ctrl+V pass diagram coordinates as canvasX/canvasY
+      // but addNode() treats them as canvas-area pixel coordinates and runs them through
+      // clientToLocalPoint, which produces wrong positions. Either add a diagram-coordinate
+      // overload to addNode(), or convert to pixel coordinates before calling it.
+
       bbox.x + bbox.width / 2 + DUPLICATE_OFFSET,
       bbox.y + bbox.height / 2 + DUPLICATE_OFFSET,
     );
@@ -4026,6 +4023,8 @@ export class DiagramEditor extends EventBus {
 
   private _focusCameraOnSelection(): void {
     if (!this._selection) return;
+    // TODO: For nodes, use node.x, node.y, node.width, node.height instead of
+    // accessing cell/link directly. Requires edge to expose a bbox or center point too.
     const model =
       this._selection instanceof DiagramNode
         ? this._selection.cell
