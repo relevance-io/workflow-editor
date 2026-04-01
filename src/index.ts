@@ -3691,39 +3691,28 @@ export class DiagramEditor extends EventBus {
         if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
           if (this._clipboard) {
             event.preventDefault();
-            const bbox = this._clipboard.cell.getBBox();
-            const openPosition = this._findOpenPosition(
-              bbox.x + DUPLICATE_OFFSET,
-              bbox.y + DUPLICATE_OFFSET,
-              bbox.width,
-              bbox.height,
-            );
-            const clonedCell = this._clipboard.cell.clone();
-            clonedCell.position(openPosition.x, openPosition.y);
-            clonedCell.addTo(this._graph);
+            const src = this._clipboard;
+            const bbox = src.cell.getBBox();
             this._deselectAll();
-
-            const copy = new (this._clipboard.constructor as NodeConstructor)({
-              label: this._clipboard.label,
-            });
-            copy.cell = clonedCell;
-            copy.editor = this;
-            this._nodeMap.set(clonedCell.id, copy);
-
-            (async () => {
-              await this._waitForRender(clonedCell);
-              await this._resizeNodeAsync(clonedCell);
-              await this._waitForRender(clonedCell);
-              copy.on('change', (changedNode: DiagramNode) =>
-                this.emit('node:change', changedNode),
-              );
-              copy.on('move', (movedNode: DiagramNode) =>
-                this.emit('node:move', movedNode),
-              );
-              this._selectItem(copy);
-            })();
-
-            this.emit('node:add', copy);
+            const copy = await this.addNode(
+              new (src.constructor as NodeConstructor)({
+                label: src.label,
+                labelColor: src.labelColor,
+                labelFontSize: src.labelFontSize,
+                description: src.description,
+                descriptionColor: src.descriptionColor,
+                backgroundColor: src.backgroundColor,
+                borderColor: src.borderColor,
+                borderWidth: src.borderWidth,
+                imageUrl: src.imageUrl,
+                imageWidth: src.imageWidth,
+                imageHeight: src.imageHeight,
+                ...src.customProps,
+              }),
+              bbox.x + bbox.width / 2 + DUPLICATE_OFFSET,
+              bbox.y + bbox.height / 2 + DUPLICATE_OFFSET,
+            );
+            copy.select();
           }
           return;
         }
@@ -4134,26 +4123,29 @@ export class DiagramEditor extends EventBus {
     this._updateMobileButtonVisibility();
   }
 
-  private _duplicateSelected(): void {
+  private async _duplicateSelected(): Promise<void> {
     if (!(this._selection instanceof DiagramNode)) return;
-    const bbox = this._selection.cell.getBBox();
-    const openPosition = this._findOpenPosition(
-      bbox.x + DUPLICATE_OFFSET,
-      bbox.y + DUPLICATE_OFFSET,
-      bbox.width,
-      bbox.height,
+    const src = this._selection;
+    const bbox = src.cell.getBBox();
+    const copy = await this.addNode(
+      new (src.constructor as NodeConstructor)({
+        label: src.label,
+        labelColor: src.labelColor,
+        labelFontSize: src.labelFontSize,
+        description: src.description,
+        descriptionColor: src.descriptionColor,
+        backgroundColor: src.backgroundColor,
+        borderColor: src.borderColor,
+        borderWidth: src.borderWidth,
+        imageUrl: src.imageUrl,
+        imageWidth: src.imageWidth,
+        imageHeight: src.imageHeight,
+        ...src.customProps,
+      }),
+      bbox.x + bbox.width / 2 + DUPLICATE_OFFSET,
+      bbox.y + bbox.height / 2 + DUPLICATE_OFFSET,
     );
-    const clonedCell = this._selection.cell.clone();
-    clonedCell.translate(openPosition.x - bbox.x, openPosition.y - bbox.y);
-    clonedCell.addTo(this._graph);
-    const copy = new (this._selection.constructor as NodeConstructor)({
-      label: this._selection.label,
-    });
-    copy.cell = clonedCell;
-    copy.editor = this;
-    this._nodeMap.set(clonedCell.id, copy);
-    this._selectItem(copy);
-    this.emit('node:add', copy);
+    copy.select();
   }
 
   private _deleteSelected(): void {
