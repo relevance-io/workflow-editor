@@ -1767,7 +1767,7 @@ export class DiagramEditor extends EventBus {
       await this.deserialize(serialized);
 
       if (shouldAutoArrange) {
-        this.autoArrange();
+        await this.autoArrange();
       }
     }
 
@@ -2065,11 +2065,29 @@ export class DiagramEditor extends EventBus {
   // TODO: Add a public batchUpdate(fn: () => void) method wrapping
   // graph.startBatch / graph.stopBatch for callers applying bulk mutations.
 
-  public autoArrange(): this {
+  public autoArrange(): Promise<this> {
     if (this._isHeadless) {
-      return this;
+      return Promise.resolve(this);
     }
 
+    return new Promise<this>((resolve) => {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          this._graph
+            .getElements()
+            .forEach((cell: any) => this._fitNodeToContent(cell));
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              this._doAutoArrange();
+              resolve(this);
+            }),
+          );
+        }),
+      );
+    });
+  }
+
+  private _doAutoArrange(): void {
     const clearance = this.clearanceUnits * this.gridSize;
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setGraph({
@@ -2096,25 +2114,42 @@ export class DiagramEditor extends EventBus {
 
     dagre.layout(dagreGraph);
 
+    this._isLoading = true;
     this._graph.getElements().forEach((element: any) => {
       const layoutNode = dagreGraph.node(element.id);
       if (!layoutNode) {
         return;
       }
       element.position(
-        Math.round(layoutNode.x - layoutNode.width / 2),
-        Math.round(layoutNode.y - layoutNode.height / 2),
+        Math.ceil((layoutNode.x - layoutNode.width / 2) / this.gridSize) *
+          this.gridSize,
+        Math.ceil((layoutNode.y - layoutNode.height / 2) / this.gridSize) *
+          this.gridSize,
       );
     });
+    this._isLoading = false;
 
     if (this._autoPortsOn) {
+      this._isLoading = true;
+      this._graph.getElements().forEach((element: any) => {
+        const layoutNode = dagreGraph.node(element.id);
+        if (!layoutNode) {
+          return;
+        }
+        element.position(
+          Math.ceil((layoutNode.x - layoutNode.width / 2) / this.gridSize) *
+            this.gridSize,
+          Math.ceil((layoutNode.y - layoutNode.height / 2) / this.gridSize) *
+            this.gridSize,
+        );
+      });
+      this._isLoading = false;
       this._graph
         .getElements()
         .forEach((el: any) => this._updateConnectionPorts(el));
     }
 
     this.centerContent();
-    return this;
   }
 
   public serializeTypes(): SerializedNodeType[] {
@@ -2768,6 +2803,9 @@ export class DiagramEditor extends EventBus {
   public _fitNodeToContent(cell: any): void {
     const view = this._renderer.findViewByModel(cell);
     if (!view) {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => this._fitNodeToContent(cell)),
+      );
       return;
     }
 
