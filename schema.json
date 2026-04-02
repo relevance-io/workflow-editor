@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Diagram Editor Schema",
+  "description": "Schema for SerializedDiagram and its components",
+  "type": "object",
+  "required": [
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SerializedNode"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SerializedEdge"
+      }
+    },
+    "nodeTypes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SerializedNodeType"
+      }
+    }
+  },
+  "definitions": {
+    "SerializedNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "nodeClass",
+        "props",
+        "customProps"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "nodeClass": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "props": {
+          "$ref": "#/definitions/NodeOptions"
+        },
+        "customProps": {
+          "type": "object",
+          "description": "Catch-all for custom fields defined in the node schema",
+          "additionalProperties": true
+        }
+      }
+    },
+    "SerializedEdge": {
+      "type": "object",
+      "required": [
+        "sourceId",
+        "targetId",
+        "sourcePort",
+        "targetPort",
+        "label",
+        "labelColor",
+        "labelFontSize",
+        "lineColor",
+        "lineWidth",
+        "lineStyle",
+        "sourceArrow",
+        "targetArrow",
+        "connectorType",
+        "description",
+        "vertices"
+      ],
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "sourcePort": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "targetPort": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "labelColor": {
+          "type": "string"
+        },
+        "labelFontSize": {
+          "type": "number"
+        },
+        "lineColor": {
+          "type": "string"
+        },
+        "lineWidth": {
+          "type": "number"
+        },
+        "lineStyle": {
+          "enum": [
+            "solid",
+            "dashed",
+            "dotted"
+          ]
+        },
+        "sourceArrow": {
+          "enum": [
+            "none",
+            "classic",
+            "block"
+          ]
+        },
+        "targetArrow": {
+          "enum": [
+            "none",
+            "classic",
+            "block"
+          ]
+        },
+        "connectorType": {
+          "enum": [
+            "curved",
+            "straight",
+            "elbow"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "vertices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    "SerializedNodeType": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": [
+            "nodeClass",
+            "baseClass",
+            "defaultOptions",
+            "schema"
+          ],
+          "properties": {
+            "nodeClass": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "baseClass": {
+              "type": "string"
+            },
+            "defaultOptions": {
+              "$ref": "#/definitions/NodeOptions"
+            },
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/FieldDefinition"
+              }
+            },
+            "visibleProps": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "label",
+                  "labelColor",
+                  "labelFontSize",
+                  "description",
+                  "descriptionColor",
+                  "backgroundColor",
+                  "borderColor",
+                  "imageUrl",
+                  "imageWidth",
+                  "imageHeight"
+                ]
+              }
+            },
+            "editProp": {
+              "type": "string",
+              "default": "label"
+            }
+          }
+        }
+      ]
+    },
+    "NodeOptions": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "labelColor": {
+          "type": "string"
+        },
+        "labelFontSize": {
+          "type": "number"
+        },
+        "description": {
+          "type": "string"
+        },
+        "descriptionColor": {
+          "type": "string"
+        },
+        "backgroundColor": {
+          "type": "string"
+        },
+        "borderColor": {
+          "type": "string"
+        },
+        "borderWidth": {
+          "type": "number"
+        },
+        "imageUrl": {
+          "type": "string"
+        },
+        "imageWidth": {
+          "type": "number"
+        },
+        "imageHeight": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FieldDefinition": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "number",
+            "textarea",
+            "boolean",
+            "choice",
+            "color",
+            "object"
+          ]
+        },
+        "default": {
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "object",
+            "null"
+          ]
+        },
+        "choices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
