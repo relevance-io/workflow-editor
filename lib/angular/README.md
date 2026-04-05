@@ -38,15 +38,11 @@ In `src/styles.scss`:
 @use '@relevance/workflow-editor/style';
 ```
 
-### 3. Copy `workflow-editor.component.ts` into your project
-
-Place it at `src/app/workflow-editor/workflow-editor.component.ts`. The source is available in `lib/angular/src/workflow-editor.component.ts` in the repository.
-
-### 4. Wire up `app.component.ts`
+### 3. Wire up `app.component.ts`
 
 ```typescript
 import { Component, ViewChild, AfterViewInit } from '@angular/core';
-import { DiagramEditorComponent } from './workflow-editor/workflow-editor.component';
+import { DiagramEditorComponent } from '@relevance/workflow-editor/angular';
 import { RectangleNode, DiamondNode, DiagramNode, Edge } from '@relevance/workflow-editor';
 
 @Component({
@@ -68,9 +64,9 @@ export class AppComponent implements AfterViewInit {
   @ViewChild('editor') editor!: DiagramEditorComponent;
 
   async ngAfterViewInit() {
-    const start    = new RectangleNode({ label: 'Start',     backgroundColor: '#d4edda' });
-    const decision = new DiamondNode({   label: 'Decision?' });
-    const end      = new RectangleNode({ label: 'End',       backgroundColor: '#f8d7da' });
+    const start = new RectangleNode({ label: 'Start', backgroundColor: '#d4edda' });
+    const decision = new DiamondNode({ label: 'Decision?' });
+    const end = new RectangleNode({ label: 'End', backgroundColor: '#f8d7da' });
 
     await this.editor.addNode(start);
     await this.editor.addNode(decision);
@@ -112,54 +108,54 @@ ng serve
 
 ### Inputs
 
-| Input | Type | Default | Description |
-| --- | --- | --- | --- |
-| `width` | `string` | `'100%'` | CSS width of the editor container |
+| Input    | Type     | Default  | Description                        |
+| -------- | -------- | -------- | ---------------------------------- |
+| `width`  | `string` | `'100%'` | CSS width of the editor container  |
 | `height` | `string` | `'100%'` | CSS height of the editor container |
 
 ### Outputs
 
-| Output | Payload | Description |
-| --- | --- | --- |
-| `change` | `void` | Fired on any diagram change |
-| `nodeAdd` | `DiagramNode` | Fired when a node is added |
-| `nodeRemove` | `DiagramNode` | Fired when a node is removed |
-| `nodeChange` | `DiagramNode` | Fired when a node's properties change |
-| `nodeMove` | `DiagramNode` | Fired when a node is moved |
-| `edgeAdd` | `Edge` | Fired when an edge is added |
-| `edgeRemove` | `Edge` | Fired when an edge is removed |
-| `edgeChange` | `Edge` | Fired when an edge's properties change |
-| `selectionChange` | `DiagramNode \| Edge \| null` | Fired when selection changes |
+| Output            | Payload                       | Description                            |
+| ----------------- | ----------------------------- | -------------------------------------- |
+| `change`          | `void`                        | Fired on any diagram change            |
+| `nodeAdd`         | `DiagramNode`                 | Fired when a node is added             |
+| `nodeRemove`      | `DiagramNode`                 | Fired when a node is removed           |
+| `nodeChange`      | `DiagramNode`                 | Fired when a node's properties change  |
+| `nodeMove`        | `DiagramNode`                 | Fired when a node is moved             |
+| `edgeAdd`         | `Edge`                        | Fired when an edge is added            |
+| `edgeRemove`      | `Edge`                        | Fired when an edge is removed          |
+| `edgeChange`      | `Edge`                        | Fired when an edge's properties change |
+| `selectionChange` | `DiagramNode \| Edge \| null` | Fired when selection changes           |
 
 ### Public methods (via `@ViewChild`)
 
 All methods are proxies to the underlying `DiagramEditor` instance.
 
-| Method | Returns | Description |
-| --- | --- | --- |
-| `editor` | `DiagramEditor` | Direct access to the underlying editor instance |
-| `addNode(node, x?, y?)` | `Promise<DiagramNode>` | Add a node to the canvas |
-| `removeNode(node)` | `void` | Remove a node |
-| `clear()` | `void` | Remove all nodes and edges |
-| `getNodes()` | `DiagramNode[]` | All nodes |
-| `getEdges()` | `Edge[]` | All edges |
-| `serialize(includeTypes?)` | `string` | Serialize to JSON |
-| `serializeNodes()` | `{ nodes, edges }` | Serialize nodes and edges only |
-| `serializeTypes()` | `SerializedNodeType[]` | Serialize type definitions only |
-| `deserialize(json)` | `Promise<DiagramEditor>` | Restore from JSON |
-| `registerNodeType(label, NodeClass, name?)` | `void` | Register a custom node type |
-| `registerBuiltInNodes()` | `void` | Register all built-in shapes |
-| `clearRegisteredNodes()` | `void` | Unregister all node types |
-| `autoArrange()` | `void` | Dagre auto-layout |
-| `zoomToFit()` | `void` | Zoom to fit all content |
-| `zoomIn(factor?)` | `void` | Zoom in |
-| `zoomOut(factor?)` | `void` | Zoom out |
-| `zoomReset()` | `void` | Reset zoom to 1:1 |
-| `getZoomLevel()` | `number` | Current zoom scale |
-| `centerContent()` | `void` | Center the canvas |
-| `panTo(x, y)` | `void` | Pan to a position |
-| `clearSelection()` | `void` | Clear current selection |
-| `getSelectedItem()` | `DiagramNode \| Edge \| null` | Currently selected item |
-| `setAutoPortSwitching(enabled)` | `void` | Toggle automatic port switching |
+| Method                                      | Returns                       | Description                                     |
+| ------------------------------------------- | ----------------------------- | ----------------------------------------------- |
+| `editor`                                    | `DiagramEditor`               | Direct access to the underlying editor instance |
+| `addNode(node, x?, y?)`                     | `Promise<DiagramNode>`        | Add a node to the canvas                        |
+| `removeNode(node)`                          | `void`                        | Remove a node                                   |
+| `clear()`                                   | `void`                        | Remove all nodes and edges                      |
+| `getNodes()`                                | `DiagramNode[]`               | All nodes                                       |
+| `getEdges()`                                | `Edge[]`                      | All edges                                       |
+| `serialize(includeTypes?)`                  | `string`                      | Serialize to JSON                               |
+| `serializeNodes()`                          | `{ nodes, edges }`            | Serialize nodes and edges only                  |
+| `serializeTypes()`                          | `SerializedNodeType[]`        | Serialize type definitions only                 |
+| `deserialize(json)`                         | `Promise<DiagramEditor>`      | Restore from JSON                               |
+| `registerNodeType(label, NodeClass, name?)` | `void`                        | Register a custom node type                     |
+| `registerBuiltInNodes()`                    | `void`                        | Register all built-in shapes                    |
+| `clearRegisteredNodes()`                    | `void`                        | Unregister all node types                       |
+| `autoArrange()`                             | `void`                        | Dagre auto-layout                               |
+| `zoomToFit()`                               | `void`                        | Zoom to fit all content                         |
+| `zoomIn(factor?)`                           | `void`                        | Zoom in                                         |
+| `zoomOut(factor?)`                          | `void`                        | Zoom out                                        |
+| `zoomReset()`                               | `void`                        | Reset zoom to 1:1                               |
+| `getZoomLevel()`                            | `number`                      | Current zoom scale                              |
+| `centerContent()`                           | `void`                        | Center the canvas                               |
+| `panTo(x, y)`                               | `void`                        | Pan to a position                               |
+| `clearSelection()`                          | `void`                        | Clear current selection                         |
+| `getSelectedItem()`                         | `DiagramNode \| Edge \| null` | Currently selected item                         |
+| `setAutoPortSwitching(enabled)`             | `void`                        | Toggle automatic port switching                 |
 
-> For the full `DiagramNode`, `Edge`, and `FieldDefinition` API see the [JS/TS SDK README](../js/README.md).
+> For the full API reference, see the [README](../../README.md).
