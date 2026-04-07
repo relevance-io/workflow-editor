@@ -505,6 +505,8 @@ public final class DiagramEditor {
         public final String                    name;
         public final List<String>              visibleProps;
         public final String                    editProp;
+        public final String                    category;
+        public final String                    subcategory;
 
         public NodeTypeDefinition(
             String                       nodeClass,
@@ -515,6 +517,20 @@ public final class DiagramEditor {
             List<String>                 visibleProps,
             String                       editProp
         ) {
+            this(nodeClass, baseClass, defaultOptions, schema, name, visibleProps, editProp, null, null);
+        }
+
+        public NodeTypeDefinition(
+            String                       nodeClass,
+            String                       baseClass,
+            NodeOptions                  defaultOptions,
+            Map<String, FieldDefinition> schema,
+            String                       name,
+            List<String>                 visibleProps,
+            String                       editProp,
+            String                       category,
+            String                       subcategory
+        ) {
             this.nodeClass      = Objects.requireNonNull(nodeClass);
             this.baseClass      = Objects.requireNonNull(baseClass);
             this.defaultOptions = defaultOptions != null ? defaultOptions : new NodeOptions();
@@ -522,6 +538,8 @@ public final class DiagramEditor {
             this.name           = name;
             this.visibleProps   = visibleProps != null ? List.copyOf(visibleProps) : List.of();
             this.editProp       = editProp;
+            this.category       = category;
+            this.subcategory    = subcategory;
         }
 
         /** Simplified constructor — name, visibleProps, and editProp default to null/empty. */
@@ -587,6 +605,8 @@ public final class DiagramEditor {
                 obj.set("visibleProps", vpArr);
             }
             if (editProp     != null)        { obj.put("editProp",  editProp); }
+            if (category     != null)        { obj.put("category",   category); }
+            if (subcategory  != null)        { obj.put("subcategory", subcategory); }
 
             return obj;
         }
@@ -604,6 +624,8 @@ public final class DiagramEditor {
             private String                    name;
             private List<String>              visibleProps   = new ArrayList<>();
             private String                    editProp;
+            private String                    category;
+            private String                    subcategory;
 
             private Builder(String nodeClass, String baseClass) {
                 this.nodeClass = nodeClass;
@@ -615,9 +637,11 @@ public final class DiagramEditor {
             public Builder name(String name)                             { this.name           = name; return this; }
             public Builder visibleProps(List<String> props)              { this.visibleProps   = props; return this; }
             public Builder editProp(String prop)                         { this.editProp       = prop; return this; }
+            public Builder category(String v)                            { this.category      = v;    return this; }
+            public Builder subcategory(String v)                         { this.subcategory   = v;    return this; }
 
             public NodeTypeDefinition build() {
-                return new NodeTypeDefinition(nodeClass, baseClass, defaultOptions, schema, name, visibleProps, editProp);
+                return new NodeTypeDefinition(nodeClass, baseClass, defaultOptions, schema, name, visibleProps, editProp, category, subcategory);
             }
         }
     }
@@ -1001,9 +1025,11 @@ public final class DiagramEditor {
                         baseClass,
                         defaultOptions,
                         schema,
-                        typeEntry.has("name")     ? typeEntry.get("name").asText()     : null,
+                        typeEntry.has("name")        ? typeEntry.get("name").asText()        : null,
                         visibleProps,
-                        typeEntry.has("editProp") ? typeEntry.get("editProp").asText() : null
+                        typeEntry.has("editProp")    ? typeEntry.get("editProp").asText()    : null,
+                        typeEntry.has("category")    ? typeEntry.get("category").asText()    : null,
+                        typeEntry.has("subcategory") ? typeEntry.get("subcategory").asText() : null
                     );
 
                     registeredNodeTypes.put(nc, def);

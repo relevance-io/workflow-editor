@@ -79,8 +79,8 @@ export interface WorkflowEditorHandle {
   /** Restore diagram from JSON. Re-registers node types if present in the data. */
   deserialize(json: string | SerializedDiagram): Promise<DiagramEditor>;
 
-  /** Register a custom node type with an optional friendly display name. */
-  registerNodeType(label: string, NodeClass: NodeConstructor, name?: string): void;
+  /** Register a custom node type with an optional friendly display name, category, and subcategory. */
+  registerNodeType(label: string, NodeClass: NodeConstructor, name?: string, category?: string, subcategory?: string): void;
 
   /** Register all built-in node types. */
   registerBuiltInNodes(): void;
@@ -262,7 +262,7 @@ const WorkflowEditor = forwardRef<WorkflowEditorHandle, WorkflowEditorProps>(
       serializeNodes:         ()                        => requireEditor().serializeNodes(),
       serializeTypes:         ()                        => requireEditor().serializeTypes(),
       deserialize:            (json)                    => requireEditor().deserialize(json),
-      registerNodeType:       (label, NodeClass, name)  => requireEditor().registerNodeType(label, NodeClass, name),
+      registerNodeType:       (label, NodeClass, name, category, subcategory) => requireEditor().registerNodeType(label, NodeClass, name, category, subcategory),
       registerBuiltInNodes:   ()                        => requireEditor().registerBuiltInNodes(),
       clearRegisteredNodes:   ()                        => requireEditor().clearRegisteredNodes(),
       autoArrange:            ()                        => requireEditor().autoArrange(),

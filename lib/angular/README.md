@@ -143,7 +143,7 @@ All methods are proxies to the underlying `DiagramEditor` instance.
 | `serializeNodes()`                          | `{ nodes, edges }`            | Serialize nodes and edges only                  |
 | `serializeTypes()`                          | `SerializedNodeType[]`        | Serialize type definitions only                 |
 | `deserialize(json)`                         | `Promise<DiagramEditor>`      | Restore from JSON                               |
-| `registerNodeType(label, NodeClass, name?)` | `void`                        | Register a custom node type                     |
+| `registerNodeType(label, NodeClass, name?, category?, subcategory?)` | `void`                        | Register a custom node type                     |
 | `registerBuiltInNodes()`                    | `void`                        | Register all built-in shapes                    |
 | `clearRegisteredNodes()`                    | `void`                        | Unregister all node types                       |
 | `autoArrange()`                             | `void`                        | Dagre auto-layout                               |

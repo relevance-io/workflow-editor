@@ -107,8 +107,8 @@ export class DiagramEditorComponent implements AfterViewInit, OnDestroy {
     return this._editor.deserialize(json, autoArrange, center);
   }
 
-  registerNodeType(label: string, NodeClass: NodeConstructor, name?: string): void {
-    this._editor.registerNodeType(label, NodeClass, name);
+  registerNodeType(label: string, NodeClass: NodeConstructor, name?: string, category?: string, subcategory?: string): void {
+    this._editor.registerNodeType(label, NodeClass, name, category, subcategory);
   }
 
   registerBuiltInNodes(): void {

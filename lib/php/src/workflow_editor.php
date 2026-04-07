@@ -302,6 +302,8 @@ final class NodeTypeDefinition
         public readonly ?string     $name         = null,
         public readonly array       $visibleProps = [],
         public readonly ?string     $editProp     = null,
+        public readonly ?string     $category     = null,
+        public readonly ?string     $subcategory  = null,
     ) {}
 
     /**
@@ -398,6 +400,14 @@ final class NodeTypeDefinition
 
         if ($this->editProp !== null) {
             $entry['editProp'] = $this->editProp;
+        }
+
+        if ($this->category !== null) {
+            $entry['category'] = $this->category;
+        }
+
+        if ($this->subcategory !== null) {
+            $entry['subcategory'] = $this->subcategory;
         }
 
         return $entry;
@@ -755,6 +765,8 @@ final class DiagramEditor
                     name:           $typeData['name'] ?? null,
                     visibleProps:   $typeData['visibleProps'] ?? [],
                     editProp:       $typeData['editProp'] ?? null,
+                    category:       $typeData['category'] ?? null,
+                    subcategory:    $typeData['subcategory'] ?? null,
                 );
 
                 $this->registeredNodeTypes[$nodeClass] = $definition;

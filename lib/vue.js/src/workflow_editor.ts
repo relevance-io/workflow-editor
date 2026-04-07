@@ -176,9 +176,9 @@ function deserialize(json: string | SerializedDiagram): Promise<DiagramEditor> {
   return requireEditor().deserialize(json);
 }
 
-/** Register a custom node type with an optional friendly display name. */
-function registerNodeType(label: string, NodeClass: NodeConstructor, name?: string): void {
-  requireEditor().registerNodeType(label, NodeClass, name);
+/** Register a custom node type with an optional friendly display name, category, and subcategory. */
+function registerNodeType(label: string, NodeClass: NodeConstructor, name?: string, category?: string, subcategory?: string): void {
+  requireEditor().registerNodeType(label, NodeClass, name, category, subcategory);
 }
 
 /** Register all built-in node types. */
