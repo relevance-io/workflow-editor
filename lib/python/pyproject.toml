@@ -26,3 +26,5 @@ packages = ["src/relevanceio"]
 "../../dist/index.es.js"     = "relevanceio/workflow_editor/index.es.js"
 "../../dist/index.es.js.map" = "relevanceio/workflow_editor/index.es.js.map"
 "../../dist/index.css"       = "relevanceio/workflow_editor/index.css"
+"../../config.json"          = "relevanceio/workflow_editor/schema.json"
+"../../schema.json"          = "relevanceio/workflow_editor/config.json"

@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -37,18 +38,29 @@ BUILTIN_NODE_CLASSES = {
 
 # ── Default values (mirrors src/config.ts) ───────────────────────────────────
 
-class _Config:
-    COLOR_NODE_BACKGROUND   = "#ffffff"
-    COLOR_NODE_BORDER       = "#adb5bd"
-    COLOR_LABEL             = "#212529"
-    COLOR_DESCRIPTION       = "#6c757d"
-    COLOR_EDGE_LINE         = "#495057"
-    COLOR_EDGE_LABEL        = "#333333"
-    FONT_SIZE_PERCENT_DEFAULT = 100
-    IMAGE_DEFAULT_WIDTH     = 32
-    IMAGE_DEFAULT_HEIGHT    = 32
+# class _Config:
+#     COLOR_NODE_BACKGROUND   = "#ffffff"
+#     COLOR_NODE_BORDER       = "#adb5bd"
+#     COLOR_LABEL             = "#212529"
+#     COLOR_DESCRIPTION       = "#6c757d"
+#     COLOR_EDGE_LINE         = "#495057"
+#     COLOR_EDGE_LABEL        = "#333333"
+#     FONT_SIZE_PERCENT_DEFAULT = 100
+#     IMAGE_DEFAULT_WIDTH     = 32
+#     IMAGE_DEFAULT_HEIGHT    = 32
 
-cfg = _Config()
+#     def __init__(self) -> None:
+#         with open(os.path.join(os.path.dirname(__file__), "config.json"), encoding="utf-8") as fp:
+#             data = json.load(fp)
+#             for k, v in data.items():
+#                 setattr(self, k, v)
+
+try:
+  with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "config.json"), encoding="utf-8") as fp:
+      config = json.load(fp)
+except FileNotFoundError:
+  with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "config.json"), encoding="utf-8") as fp:
+      config = json.load(fp)
 
 
 # ── Data classes (mirror SerializedNode / SerializedEdge / SerializedDiagram) ─
@@ -56,16 +68,16 @@ cfg = _Config()
 @dataclass
 class NodeOptions:
     label:            str   = ""
-    labelColor:       str   = cfg.COLOR_LABEL
-    labelFontSize:    int   = cfg.FONT_SIZE_PERCENT_DEFAULT
+    labelColor:       str   = config['colors']['label']
+    labelFontSize:    int   = config['font_sizes']['percent_default']
     description:      str   = ""
-    descriptionColor: str   = cfg.COLOR_DESCRIPTION
-    backgroundColor:  str   = cfg.COLOR_NODE_BACKGROUND
-    borderColor:      str   = cfg.COLOR_NODE_BORDER
-    borderWidth:      int   = 2
+    descriptionColor: str   = config['colors']['description']
+    backgroundColor:  str   = config['colors']['node_background']
+    borderColor:      str   = config['colors']['node_border']
+    borderWidth:      int   = config['node_sizes']['border_width']
     imageUrl:         str   = ""
-    imageWidth:       int   = cfg.IMAGE_DEFAULT_WIDTH
-    imageHeight:      int   = cfg.IMAGE_DEFAULT_HEIGHT
+    imageWidth:       int   = config['image_dimensions']['default_width']
+    imageHeight:      int   = config['image_dimensions']['default_height']
 
     def __init__(self, data: dict | None = None, **kwargs):
         for k, v in kwargs.items():
@@ -311,10 +323,10 @@ class Edge:
         target: DiagramNode,
         *,
         label:          str           = "",
-        label_color:    str           = cfg.COLOR_EDGE_LABEL,
-        label_font_size: int          = cfg.FONT_SIZE_PERCENT_DEFAULT,
-        line_color:     str           = cfg.COLOR_EDGE_LINE,
-        line_width:     int           = 2,
+        label_color:    str           = config['colors']['edge_label'],
+        label_font_size: int          = config['font_sizes']['percent_default'],
+        line_color:     str           = config['colors']['edge_line'],
+        line_width:     int           = config['node_sizes']['edge_line_width'],
         line_style:     LineStyle     = "solid",
         source_arrow:   ArrowMarkerName = "none",
         target_arrow:   ArrowMarkerName = "classic",
@@ -463,10 +475,10 @@ class DiagramEditor:
         target: DiagramNode,
         *,
         label:           str           = "",
-        label_color:     str           = cfg.COLOR_EDGE_LABEL,
-        label_font_size: int           = cfg.FONT_SIZE_PERCENT_DEFAULT,
-        line_color:      str           = cfg.COLOR_EDGE_LINE,
-        line_width:      int           = 2,
+        label_color:     str           = config['colors']['edge_label'],
+        label_font_size: int           = config['font_sizes']['percent_default'],
+        line_color:      str           = config['colors']['edge_line'],
+        line_width:      int           = config['node_sizes']['edge_line_width'],
         line_style:      LineStyle     = "solid",
         source_arrow:    ArrowMarkerName = "none",
         target_arrow:    ArrowMarkerName = "classic",
@@ -627,10 +639,10 @@ class DiagramEditor:
             self._edges.append(Edge(
                 src, tgt,
                 label=ed.get("label", ""),
-                label_color=ed.get("labelColor", cfg.COLOR_EDGE_LABEL),
-                label_font_size=ed.get("labelFontSize", cfg.FONT_SIZE_PERCENT_DEFAULT),
-                line_color=ed.get("lineColor", cfg.COLOR_EDGE_LINE),
-                line_width=ed.get("lineWidth", 2),
+                label_color=ed.get("labelColor", config['colors']['edge_label']),
+                label_font_size=ed.get("labelFontSize", config['font_sizes']['percent_default']),
+                line_color=ed.get("lineColor", config['colors']['edge_line']),
+                line_width=ed.get("lineWidth", config['node_sizes']['edge_line_width']),
                 line_style=ed.get("lineStyle", "solid"),
                 source_arrow=ed.get("sourceArrow", "none"),
                 target_arrow=ed.get("targetArrow", "classic"),
