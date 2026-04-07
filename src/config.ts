@@ -17,6 +17,8 @@ export class Configuration {
   node_sizes!: {
     default_width: number;
     default_height: number;
+    border_width: number;
+    edge_line_width: number;
     squarish_size: number;
     min_width: number;
     min_height: number;
