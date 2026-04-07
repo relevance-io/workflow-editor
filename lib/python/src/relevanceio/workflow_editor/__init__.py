@@ -1,5 +1,4 @@
 """
-diagram_editor.py
 Headless Python mirror of @relevance/workflow-editor's public API.
 Produces and consumes JSON that passes schema.json validation.
 
@@ -197,7 +196,7 @@ class DiagramNode:
         d: dict = {
             "id":          self.id,
             "nodeClass":   self.__class__.node_class,
-            "props":       self._props.to_dict(),
+            "props":       self._props,
             "customProps": deepcopy(self.custom_props),
         }
         if self.x is not None:
