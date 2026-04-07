@@ -31,48 +31,27 @@ BUILTIN_NODE_CLASSES = {
 
 # ── Default values (mirrors src/config.ts) ───────────────────────────────────
 
-# class _Config:
-#     COLOR_NODE_BACKGROUND   = "#ffffff"
-#     COLOR_NODE_BORDER       = "#adb5bd"
-#     COLOR_LABEL             = "#212529"
-#     COLOR_DESCRIPTION       = "#6c757d"
-#     COLOR_EDGE_LINE         = "#495057"
-#     COLOR_EDGE_LABEL        = "#333333"
-#     FONT_SIZE_PERCENT_DEFAULT = 100
-#     IMAGE_DEFAULT_WIDTH     = 32
-#     IMAGE_DEFAULT_HEIGHT    = 32
-
-#     def __init__(self) -> None:
-#         with open(os.path.join(os.path.dirname(__file__), "config.json"), encoding="utf-8") as fp:
-#             data = json.load(fp)
-#             for k, v in data.items():
-#                 setattr(self, k, v)
-
 _SEARCH_PATHS = [
   os.path.join(os.path.dirname(__file__), "..", "..", ".."),
   os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."),
 ]
 
-def _get_config():
+def _get_asset(filename: str) -> str:
+    """
+    Load a file by searching _SEARCH_PATHS.
+    JSON files (.json) are parsed and returned as a dict.
+    All other files are returned as a raw string.
+    """
     for path in _SEARCH_PATHS:
-        filename = os.path.join(path, "config.json")
-        if os.path.exists(filename):
-            with open(filename, encoding="utf-8") as fp:
-                return json.load(fp)
-    raise FileNotFoundError('config.json not found in search paths')
+        filepath = os.path.join(path, filename)
+        if os.path.exists(filepath):
+            with open(filepath, encoding="utf-8") as fp:
+                return json.load(fp) if filename.endswith(".json") else fp.read()
+    raise FileNotFoundError(f'{filename} not found along search paths')
 
 
-def _get_schema():
-    for path in _SEARCH_PATHS:
-        filename = os.path.join(path, "schema.json")
-        if os.path.exists(filename):
-            with open(filename, encoding="utf-8") as fp:
-                return json.load(fp)
-    raise FileNotFoundError('schema.json not found in search paths')
-
-
-config = _get_config()
-_schema = _get_schema()
+config  = _get_asset("config.json")
+_schema = _get_asset("schema.json")
 
 
 # ── Data classes (mirror SerializedNode / SerializedEdge / SerializedDiagram) ─
@@ -278,7 +257,7 @@ def define_node_type(
         TaskNode = define_node_type(
             RectangleNode,
             node_class_name="TaskNode",
-            defaults=NodeOptions(label="New Task", backgroundColor="#f0f8ff"),
+            defaults={'label': 'New Task', 'backgroundColor': '#f0f8ff'},
             schema={"assignee": {"label": "Assignee", "type": "text", "default": ""}},
             name="Task",
         )
@@ -297,10 +276,7 @@ def define_node_type(
     CustomNode._schema_def = _schema                   # type: ignore[attr-defined]
     CustomNode._display_name = _name                   # type: ignore[attr-defined]
 
-    original_init = CustomNode.__init__
-
     def _init(self, options: NodeOptions | str | None = None):
-        # Merge defaults then caller options
         merged: NodeOptions = {**_defaults}
         if isinstance(options, str):
             merged['label'] = options
@@ -308,7 +284,6 @@ def define_node_type(
             merged.update({k: v for k, v in options.items() if k in _NODE_OPTIONS_DEFAULTS})
         base_class.__init__(self, merged)
         self._schema = deepcopy(_schema)
-        # Set custom prop defaults
         for key, field_def in _schema.items():
             if "default" in field_def and key not in self.custom_props:
                 self.custom_props[key] = field_def["default"]
@@ -327,7 +302,7 @@ class Edge:
         source: DiagramNode,
         target: DiagramNode,
         *,
-        label:          str           = "",
+        label:          str             = "",
         labelColor:     str             = config['colors']['edge_label'],
         labelFontSize:  int             = config['font_sizes']['percent_default'],
         lineColor:      str             = config['colors']['edge_line'],
@@ -342,10 +317,10 @@ class Edge:
         vertices:       list[Point]     | None = None,
         _editor:        DiagramEditor   | None = None,
     ):
-        self.id            = f"edge-{uuid.uuid4().hex[:10]}"
-        self.source        = source
-        self.target        = target
-        self.label         = label
+        self.id             = f"edge-{uuid.uuid4().hex[:10]}"
+        self.source         = source
+        self.target         = target
+        self.label          = label
         self.label_color    = labelColor
         self.label_font_size = labelFontSize
         self.line_color     = lineColor
@@ -479,7 +454,7 @@ class DiagramEditor:
         source: DiagramNode,
         target: DiagramNode,
         *,
-        label:           str           = "",
+        label:           str             = "",
         labelColor:      str             = config['colors']['edge_label'],
         labelFontSize:   int             = config['font_sizes']['percent_default'],
         lineColor:       str             = config['colors']['edge_line'],
@@ -549,7 +524,7 @@ class DiagramEditor:
                 entry: dict = {
                     "nodeClass": cls.node_class,
                     "baseClass": getattr(cls, "_base_class_name", "RectangleNode"),
-                    "defaultOptions": getattr(cls, "_default_options", NodeOptions()).to_dict(),
+                    "defaultOptions": dict(getattr(cls, "_default_options", {})),
                     "schema": {
                         k: {fk: fv for fk, fv in fd.items()
                             if fk not in ("serialize", "deserialize", "onChange")}
@@ -589,12 +564,10 @@ class DiagramEditor:
         # ── Re-register node types ────────────────────────────────────────────
         for type_data in raw.get("nodeTypes") or []:
             if isinstance(type_data, str):
-                # Built-in type
                 if type_data in _BUILTIN_CLASS_MAP:
                     cls = _BUILTIN_CLASS_MAP[type_data]
                     self._registered_node_types[type_data] = cls
             else:
-                # Custom type — reconstruct a class dynamically
                 nc   = type_data["nodeClass"]
                 bc   = type_data.get("baseClass", "RectangleNode")
                 base = (
@@ -672,6 +645,54 @@ class DiagramEditor:
         with open(path, encoding="utf-8") as f:
             return self.deserialize(f.read())
 
+    # ── HTML render ───────────────────────────────────────────────────────────
+
+    def render(self, width: str = "100%", height: str = "600px") -> str:
+        """
+        Return a self-contained HTML string that renders the current diagram
+        in the browser using the bundled JS and CSS assets.
+
+        Usage in a Jupyter notebook:
+            from IPython.display import HTML
+            display(HTML(editor.render()))
+
+        Usage as a standalone file:
+            with open("diagram.html", "w") as f:
+                f.write(editor.render())
+        """
+        js  = _get_asset("dist/index.es.js")
+        css = _get_asset("dist/index.css")
+
+        container_id = f"wf-{uuid.uuid4().hex[:8]}"
+        diagram_json = self.serialize()
+
+        # Escape </script> sequences that would break the inline script block.
+        safe_json = diagram_json.replace("</", "<\\/")
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+{css}
+  </style>
+</head>
+<body>
+  <div id="{container_id}" style="width:{width};height:{height};"></div>
+  <script type="module">
+{js}
+
+    const container = document.getElementById('{container_id}');
+    const diagram   = {safe_json};
+
+    const editor = new DiagramEditor(container);
+    editor.registerBuiltInNodes();
+    editor.deserialize(diagram, false, 'fit');
+  </script>
+</body>
+</html>"""
+
     # ── Schema validation ─────────────────────────────────────────────────────
 
     def validate(self, schema: dict = _schema) -> None:
@@ -693,17 +714,15 @@ class DiagramEditor:
 # ── Demo / smoke-test ─────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Build a small diagram programmatically
     editor = DiagramEditor()
     editor.register_builtin_nodes()
 
-    # Define a custom node type
     TaskNode = define_node_type(
         RectangleNode,
         node_class_name="TaskNode",
-        defaults=NodeOptions(label="New Task", background_color="#f0f8ff"),
+        defaults={'label': 'New Task', 'backgroundColor': '#f0f8ff'},
         schema={
-            "assignee": {"label": "Assignee", "type": "text",   "default": ""},
+            "assignee": {"label": "Assignee", "type": "text",    "default": ""},
             "done":     {"label": "Done",     "type": "boolean", "default": False},
             "priority": {
                 "label":   "Priority",
@@ -716,10 +735,10 @@ if __name__ == "__main__":
     )
     editor.register_node_type("TaskNode", TaskNode, "Task")
 
-    start  = editor.add_node(RectangleNode("Start"),        x=0,   y=0)
-    review = editor.add_node(TaskNode("Code Review"),       x=200, y=0)
-    done   = editor.add_node(DiamondNode("Done?"),          x=400, y=0)
-    end    = editor.add_node(CircleNode("End"),             x=600, y=0)
+    start  = editor.add_node(RectangleNode("Start"),  x=0,   y=0)
+    review = editor.add_node(TaskNode("Code Review"), x=200, y=0)
+    done   = editor.add_node(DiamondNode("Done?"),    x=400, y=0)
+    end    = editor.add_node(CircleNode("End"),       x=600, y=0)
 
     review.set_custom_property("assignee", "alice")
     review.set_custom_property("priority", "high")
@@ -728,29 +747,10 @@ if __name__ == "__main__":
     editor.connect_to(review, done,   label="submit", lineStyle="dashed")
     editor.connect_to(done,   end,    label="yes",    targetArrow="block")
     editor.connect_to(done,   review, label="no",     connectorType="curved",
-                   sourceArrow="classic")
+                      sourceArrow="classic")
 
-    json_str = editor.serialize()
-    print("── Serialized ──────────────────────────────")
-    print(json_str[:600], "...\n")
+    with open("/tmp/diagram.html", "w", encoding="utf-8") as f:
+        f.write(editor.render(height="800px"))
 
-    # Round-trip: deserialize into a fresh editor
-    editor2 = DiagramEditor()
-    editor2.deserialize(json_str)
-    print("── Round-trip ──────────────────────────────")
-    print("Nodes:", editor2.get_nodes())
-    print("Edges:", editor2.get_edges())
-
-    # Export / import via file
-    editor.export_to_file("/tmp/diagram.json")
-    editor3 = DiagramEditor().import_from_file("/tmp/diagram.json")
-    print("\n── Import from file ────────────────────────")
-    print(editor3)
-
-    # Optional schema validation
-    try:
-        editor.validate("schema.json")
-    except FileNotFoundError:
-        print("(schema.json not found in cwd — skipping validation)")
-    except RuntimeError as e:
-        print(e)
+    print("✓ Wrote /tmp/diagram.html")
+    editor.validate()
