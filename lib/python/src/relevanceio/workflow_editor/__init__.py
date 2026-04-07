@@ -5,12 +5,13 @@ Produces and consumes JSON that passes schema.json validation.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import os
 import uuid
 from copy import deepcopy
-from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
+from typing import TypedDict
+from typing import Any, Literal, Optional, TypedDict
 
 import jsonschema
 
@@ -76,44 +77,38 @@ _schema = _get_schema()
 
 # ── Data classes (mirror SerializedNode / SerializedEdge / SerializedDiagram) ─
 
-@dataclass
-class NodeOptions:
-    label:            str   = ""
-    labelColor:       str   = config['colors']['label']
-    labelFontSize:    int   = config['font_sizes']['percent_default']
-    description:      str   = ""
-    descriptionColor: str   = config['colors']['description']
-    backgroundColor:  str   = config['colors']['node_background']
-    borderColor:      str   = config['colors']['node_border']
-    borderWidth:      int   = config['node_sizes']['border_width']
-    imageUrl:         str   = ""
-    imageWidth:       int   = config['image_dimensions']['default_width']
-    imageHeight:      int   = config['image_dimensions']['default_height']
+class NodeOptions(TypedDict, total=False):
+    label:            str
+    labelColor:       str
+    labelFontSize:    int
+    description:      str
+    descriptionColor: str
+    backgroundColor:  str
+    borderColor:      str
+    borderWidth:      int
+    imageUrl:         str
+    imageWidth:       int
+    imageHeight:      int
 
-    def __init__(self, data: dict | None = None, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        for k, v in data.items() if data else {}.items():
-            setattr(self, k, v)
 
-    def to_dict(self) -> dict:
-        return {
-            "label":            self.label,
-            "labelColor":       self.labelColor,
-            "labelFontSize":    self.labelFontSize,
-            "description":      self.description,
-            "descriptionColor": self.descriptionColor,
-            "backgroundColor":  self.backgroundColor,
-            "borderColor":      self.borderColor,
-            "borderWidth":      self.borderWidth,
-            "imageUrl":         self.imageUrl,
-            "imageWidth":       self.imageWidth,
-            "imageHeight":      self.imageHeight,
-        }
+_NODE_OPTIONS_DEFAULTS: NodeOptions = {
+    'label':            '',
+    'labelColor':       config['colors']['label'],
+    'labelFontSize':    config['font_sizes']['percent_default'],
+    'description':      '',
+    'descriptionColor': config['colors']['description'],
+    'backgroundColor':  config['colors']['node_background'],
+    'borderColor':      config['colors']['node_border'],
+    'borderWidth':      config['node_sizes']['border_width'],
+    'imageUrl':         '',
+    'imageWidth':       config['image_dimensions']['default_width'],
+    'imageHeight':      config['image_dimensions']['default_height'],
+}
 
-    @classmethod
-    def from_dict(cls, d: dict) -> "NodeOptions":
-        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+def make_node_options(**kwargs) -> NodeOptions:
+    """Return a fully-populated NodeOptions dict, filling missing keys from defaults."""
+    return {**_NODE_OPTIONS_DEFAULTS, **{k: v for k, v in kwargs.items() if k in _NODE_OPTIONS_DEFAULTS}}
 
 
 @dataclass
@@ -140,13 +135,15 @@ class DiagramNode:
         self._editor = _editor
 
         if isinstance(options, str):
-            opts = NodeOptions(label=options)
+            opts = make_node_options(label=options)
         elif options is None:
-            opts = NodeOptions()
+            opts = make_node_options()
+        elif isinstance(options, dict):
+            opts = {**_NODE_OPTIONS_DEFAULTS, **{k: v for k, v in options.items() if k in _NODE_OPTIONS_DEFAULTS}}
         else:
-            opts = options
+            opts = make_node_options()
 
-        self._props = opts
+        self._props: NodeOptions = opts
         self.custom_props: dict[str, Any] = {}
         self._schema: dict[str, Any] = {}
         self.x: Optional[float] = None
@@ -155,59 +152,59 @@ class DiagramNode:
     # ── Built-in props ───────────────────────────────────────────────────────
 
     @property
-    def label(self) -> str:            return self._props.label
+    def label(self) -> str:             return self._props['label']
     @label.setter
-    def label(self, v: str):           self._props.label = v
+    def label(self, v: str):            self._props['label'] = v
 
     @property
-    def label_color(self) -> str:      return self._props.labelColor
-    @label_color.setter
-    def label_color(self, v: str):     self._props.labelColor = v
+    def labelColor(self) -> str:        return self._props['labelColor']
+    @labelColor.setter
+    def labelColor(self, v: str):       self._props['labelColor'] = v
 
     @property
-    def label_font_size(self) -> int:  return self._props.labelFontSize
-    @label_font_size.setter
-    def label_font_size(self, v: int): self._props.labelFontSize = v
+    def labelFontSize(self) -> int:     return self._props['labelFontSize']
+    @labelFontSize.setter
+    def labelFontSize(self, v: int):    self._props['labelFontSize'] = v
 
     @property
-    def description(self) -> str:      return self._props.description
+    def description(self) -> str:       return self._props['description']
     @description.setter
-    def description(self, v: str):     self._props.description = v
+    def description(self, v: str):      self._props['description'] = v
 
     @property
-    def description_color(self) -> str:     return self._props.descriptionColor
-    @description_color.setter
-    def description_color(self, v: str):    self._props.descriptionColor = v
+    def descriptionColor(self) -> str:  return self._props['descriptionColor']
+    @descriptionColor.setter
+    def descriptionColor(self, v: str): self._props['descriptionColor'] = v
 
     @property
-    def background_color(self) -> str:      return self._props.backgroundColor
-    @background_color.setter
-    def background_color(self, v: str):     self._props.backgroundColor = v
+    def backgroundColor(self) -> str:   return self._props['backgroundColor']
+    @backgroundColor.setter
+    def backgroundColor(self, v: str):  self._props['backgroundColor'] = v
 
     @property
-    def border_color(self) -> str:     return self._props.borderColor
-    @border_color.setter
-    def border_color(self, v: str):    self._props.borderColor = v
+    def borderColor(self) -> str:       return self._props['borderColor']
+    @borderColor.setter
+    def borderColor(self, v: str):      self._props['borderColor'] = v
 
     @property
-    def border_width(self) -> int:     return self._props.borderWidth
-    @border_width.setter
-    def border_width(self, v: int):    self._props.borderWidth = v
+    def borderWidth(self) -> int:       return self._props['borderWidth']
+    @borderWidth.setter
+    def borderWidth(self, v: int):      self._props['borderWidth'] = v
 
     @property
-    def image_url(self) -> str:        return self._props.imageUrl
-    @image_url.setter
-    def image_url(self, v: str):       self._props.imageUrl = v
+    def imageUrl(self) -> str:          return self._props['imageUrl']
+    @imageUrl.setter
+    def imageUrl(self, v: str):         self._props['imageUrl'] = v
 
     @property
-    def image_width(self) -> int:      return self._props.imageWidth
-    @image_width.setter
-    def image_width(self, v: int):     self._props.imageWidth = v
+    def imageWidth(self) -> int:        return self._props['imageWidth']
+    @imageWidth.setter
+    def imageWidth(self, v: int):       self._props['imageWidth'] = v
 
     @property
-    def image_height(self) -> int:     return self._props.imageHeight
-    @image_height.setter
-    def image_height(self, v: int):    self._props.imageHeight = v
+    def imageHeight(self) -> int:       return self._props['imageHeight']
+    @imageHeight.setter
+    def imageHeight(self, v: int):      self._props['imageHeight'] = v
 
     # ── Custom props ─────────────────────────────────────────────────────────
 
@@ -226,7 +223,7 @@ class DiagramNode:
         d: dict = {
             "id":          self.id,
             "nodeClass":   self.__class__.node_class,
-            "props":       self._props,
+            "props":       dict(self._props),
             "customProps": deepcopy(self.custom_props),
         }
         if self.x is not None:
@@ -286,7 +283,7 @@ def define_node_type(
             name="Task",
         )
     """
-    _defaults   = defaults or NodeOptions()
+    _defaults   = defaults or make_node_options()
     _schema     = schema or {}
     _name       = name or node_class_name
 
@@ -304,14 +301,11 @@ def define_node_type(
 
     def _init(self, options: NodeOptions | str | None = None):
         # Merge defaults then caller options
-        merged = deepcopy(_defaults)
+        merged: NodeOptions = {**_defaults}
         if isinstance(options, str):
-            merged.label = options
-        elif isinstance(options, NodeOptions):
-            for f in NodeOptions.__dataclass_fields__:
-                caller_val = getattr(options, f)
-                if caller_val != getattr(NodeOptions(), f):
-                    setattr(merged, f, caller_val)
+            merged['label'] = options
+        elif isinstance(options, dict):
+            merged.update({k: v for k, v in options.items() if k in _NODE_OPTIONS_DEFAULTS})
         base_class.__init__(self, merged)
         self._schema = deepcopy(_schema)
         # Set custom prop defaults
@@ -334,35 +328,35 @@ class Edge:
         target: DiagramNode,
         *,
         label:          str           = "",
-        label_color:    str           = config['colors']['edge_label'],
-        label_font_size: int          = config['font_sizes']['percent_default'],
-        line_color:     str           = config['colors']['edge_line'],
-        line_width:     int           = config['node_sizes']['edge_line_width'],
-        line_style:     LineStyle     = "solid",
-        source_arrow:   ArrowMarkerName = "none",
-        target_arrow:   ArrowMarkerName = "classic",
-        connector_type: ConnectorType = "elbow",
-        description:    str           = "",
-        source_port:    Optional[int] = None,
-        target_port:    Optional[int] = None,
-        vertices:       list[Point]   | None = None,
-        _editor:        DiagramEditor | None = None,
+        labelColor:     str             = config['colors']['edge_label'],
+        labelFontSize:  int             = config['font_sizes']['percent_default'],
+        lineColor:      str             = config['colors']['edge_line'],
+        lineWidth:      int             = config['node_sizes']['edge_line_width'],
+        lineStyle:      LineStyle       = "solid",
+        sourceArrow:    ArrowMarkerName = "none",
+        targetArrow:    ArrowMarkerName = "classic",
+        connectorType:  ConnectorType   = "elbow",
+        description:    str             = "",
+        sourcePort:     Optional[int]   = None,
+        targetPort:     Optional[int]   = None,
+        vertices:       list[Point]     | None = None,
+        _editor:        DiagramEditor   | None = None,
     ):
         self.id            = f"edge-{uuid.uuid4().hex[:10]}"
         self.source        = source
         self.target        = target
         self.label         = label
-        self.label_color   = label_color
-        self.label_font_size = label_font_size
-        self.line_color    = line_color
-        self.line_width    = line_width
-        self.line_style    = line_style
-        self.source_arrow  = source_arrow
-        self.target_arrow  = target_arrow
-        self.connector_type = connector_type
+        self.labelColor    = labelColor
+        self.labelFontSize = labelFontSize
+        self.lineColor     = lineColor
+        self.lineWidth     = lineWidth
+        self.lineStyle     = lineStyle
+        self.sourceArrow   = sourceArrow
+        self.targetArrow   = targetArrow
+        self.connectorType = connectorType
         self.description   = description
-        self.source_port   = source_port
-        self.target_port   = target_port
+        self.sourcePort    = sourcePort
+        self.targetPort    = targetPort
         self.vertices: list[Point] = vertices or []
         self._editor = _editor
 
@@ -378,17 +372,17 @@ class Edge:
         return {
             "sourceId":      self.source.id,
             "targetId":      self.target.id,
-            "sourcePort":    self.source_port,
-            "targetPort":    self.target_port,
+            "sourcePort":    self.sourcePort,
+            "targetPort":    self.targetPort,
             "label":         self.label,
-            "labelColor":    self.label_color,
-            "labelFontSize": self.label_font_size,
-            "lineColor":     self.line_color,
-            "lineWidth":     self.line_width,
-            "lineStyle":     self.line_style,
-            "sourceArrow":   self.source_arrow,
-            "targetArrow":   self.target_arrow,
-            "connectorType": self.connector_type,
+            "labelColor":    self.labelColor,
+            "labelFontSize": self.labelFontSize,
+            "lineColor":     self.lineColor,
+            "lineWidth":     self.lineWidth,
+            "lineStyle":     self.lineStyle,
+            "sourceArrow":   self.sourceArrow,
+            "targetArrow":   self.targetArrow,
+            "connectorType": self.connectorType,
             "description":   self.description,
             "vertices":      [v.to_dict() for v in self.vertices],
         }
@@ -486,34 +480,34 @@ class DiagramEditor:
         target: DiagramNode,
         *,
         label:           str           = "",
-        label_color:     str           = config['colors']['edge_label'],
-        label_font_size: int           = config['font_sizes']['percent_default'],
-        line_color:      str           = config['colors']['edge_line'],
-        line_width:      int           = config['node_sizes']['edge_line_width'],
-        line_style:      LineStyle     = "solid",
-        source_arrow:    ArrowMarkerName = "none",
-        target_arrow:    ArrowMarkerName = "classic",
-        connector_type:  ConnectorType = "elbow",
-        description:     str           = "",
-        source_port:     Optional[int] = None,
-        target_port:     Optional[int] = None,
-        vertices:        list[Point]   | None = None,
+        labelColor:      str             = config['colors']['edge_label'],
+        labelFontSize:   int             = config['font_sizes']['percent_default'],
+        lineColor:       str             = config['colors']['edge_line'],
+        lineWidth:       int             = config['node_sizes']['edge_line_width'],
+        lineStyle:       LineStyle       = "solid",
+        sourceArrow:     ArrowMarkerName = "none",
+        targetArrow:     ArrowMarkerName = "classic",
+        connectorType:   ConnectorType   = "elbow",
+        description:     str             = "",
+        sourcePort:      Optional[int]   = None,
+        targetPort:      Optional[int]   = None,
+        vertices:        list[Point]     | None = None,
     ) -> Edge:
         """Connect two nodes and return the new Edge."""
         edge = Edge(
             source, target,
             label=label,
-            label_color=label_color,
-            label_font_size=label_font_size,
-            line_color=line_color,
-            line_width=line_width,
-            line_style=line_style,
-            source_arrow=source_arrow,
-            target_arrow=target_arrow,
-            connector_type=connector_type,
+            labelColor=labelColor,
+            labelFontSize=labelFontSize,
+            lineColor=lineColor,
+            lineWidth=lineWidth,
+            lineStyle=lineStyle,
+            sourceArrow=sourceArrow,
+            targetArrow=targetArrow,
+            connectorType=connectorType,
             description=description,
-            source_port=source_port,
-            target_port=target_port,
+            sourcePort=sourcePort,
+            targetPort=targetPort,
             vertices=vertices,
         )
         self._edges.append(edge)
@@ -609,7 +603,7 @@ class DiagramEditor:
                 )
                 if base is None:
                     raise ValueError(f"Unknown base class '{bc}' for type '{nc}'.")
-                opts = NodeOptions.from_dict(type_data.get("defaultOptions") or {})
+                opts = make_node_options(**{k: v for k, v in (type_data.get("defaultOptions") or {}).items() if k in _NODE_OPTIONS_DEFAULTS})
                 custom_cls = define_node_type(
                     base,
                     node_class_name=nc,
@@ -628,7 +622,7 @@ class DiagramEditor:
                 or _BUILTIN_CLASS_MAP.get(nc)
                 or DiagramNode
             )
-            props = NodeOptions.from_dict(nd.get("props") or {})
+            props = {**_NODE_OPTIONS_DEFAULTS, **{k: v for k, v in (nd.get("props") or {}).items() if k in _NODE_OPTIONS_DEFAULTS}}
             node  = cls(props)
             node.id = nd["id"]
             node.x  = nd.get("x")
@@ -650,17 +644,17 @@ class DiagramEditor:
             self._edges.append(Edge(
                 src, tgt,
                 label=ed.get("label", ""),
-                label_color=ed.get("labelColor", config['colors']['edge_label']),
-                label_font_size=ed.get("labelFontSize", config['font_sizes']['percent_default']),
-                line_color=ed.get("lineColor", config['colors']['edge_line']),
-                line_width=ed.get("lineWidth", config['node_sizes']['edge_line_width']),
-                line_style=ed.get("lineStyle", "solid"),
-                source_arrow=ed.get("sourceArrow", "none"),
-                target_arrow=ed.get("targetArrow", "classic"),
-                connector_type=ed.get("connectorType", "elbow"),
+                labelColor=ed.get("labelColor", config['colors']['edge_label']),
+                labelFontSize=ed.get("labelFontSize", config['font_sizes']['percent_default']),
+                lineColor=ed.get("lineColor", config['colors']['edge_line']),
+                lineWidth=ed.get("lineWidth", config['node_sizes']['edge_line_width']),
+                lineStyle=ed.get("lineStyle", "solid"),
+                sourceArrow=ed.get("sourceArrow", "none"),
+                targetArrow=ed.get("targetArrow", "classic"),
+                connectorType=ed.get("connectorType", "elbow"),
                 description=ed.get("description", ""),
-                source_port=ed.get("sourcePort"),
-                target_port=ed.get("targetPort"),
+                sourcePort=ed.get("sourcePort"),
+                targetPort=ed.get("targetPort"),
                 vertices=verts,
             ))
 
@@ -731,10 +725,10 @@ if __name__ == "__main__":
     review.set_custom_property("priority", "high")
 
     editor.connect_to(start,  review, label="begin")
-    editor.connect_to(review, done,   label="submit", line_style="dashed")
-    editor.connect_to(done,   end,    label="yes",    target_arrow="block")
-    editor.connect_to(done,   review, label="no",     connector_type="curved",
-                   source_arrow="classic")
+    editor.connect_to(review, done,   label="submit", lineStyle="dashed")
+    editor.connect_to(done,   end,    label="yes",    targetArrow="block")
+    editor.connect_to(done,   review, label="no",     connectorType="curved",
+                   sourceArrow="classic")
 
     json_str = editor.serialize()
     print("── Serialized ──────────────────────────────")
