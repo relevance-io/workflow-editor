@@ -1,9 +1,6 @@
 """
 Headless Python mirror of @relevance/workflow-editor's public API.
 Produces and consumes JSON that passes schema.json validation.
-
-Usage:
-    pip install jsonschema
 """
 
 from __future__ import annotations
@@ -15,12 +12,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional
 
-# ── jsonschema is optional — validation only runs when requested ─────────────
-try:
-    import jsonschema
-    _JSONSCHEMA_AVAILABLE = True
-except ImportError:
-    _JSONSCHEMA_AVAILABLE = False
+import jsonschema
 
 
 # ── Types ────────────────────────────────────────────────────────────────────
@@ -55,12 +47,31 @@ BUILTIN_NODE_CLASSES = {
 #             for k, v in data.items():
 #                 setattr(self, k, v)
 
-try:
-  with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "config.json"), encoding="utf-8") as fp:
-      config = json.load(fp)
-except FileNotFoundError:
-  with open(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "config.json"), encoding="utf-8") as fp:
-      config = json.load(fp)
+_SEARCH_PATHS = [
+  os.path.join(os.path.dirname(__file__), "..", "..", ".."),
+  os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."),
+]
+
+def _get_config():
+    for path in _SEARCH_PATHS:
+        filename = os.path.join(path, "config.json")
+        if os.path.exists(filename):
+            with open(filename, encoding="utf-8") as fp:
+                return json.load(fp)
+    raise FileNotFoundError('config.json not found in search paths')
+
+
+def _get_schema():
+    for path in _SEARCH_PATHS:
+        filename = os.path.join(path, "schema.json")
+        if os.path.exists(filename):
+            with open(filename, encoding="utf-8") as fp:
+                return json.load(fp)
+    raise FileNotFoundError('schema.json not found in search paths')
+
+
+config = _get_config()
+_schema = _get_schema()
 
 
 # ── Data classes (mirror SerializedNode / SerializedEdge / SerializedDiagram) ─
@@ -669,15 +680,11 @@ class DiagramEditor:
 
     # ── Schema validation ─────────────────────────────────────────────────────
 
-    def validate(self, schema_path: str = "schema.json") -> None:
+    def validate(self, schema: dict = _schema) -> None:
         """
         Validate the current diagram against schema.json.
         Requires: pip install jsonschema
         """
-        if not _JSONSCHEMA_AVAILABLE:
-            raise RuntimeError("jsonschema not installed — run: pip install jsonschema")
-        with open(schema_path, encoding="utf-8") as f:
-            schema = json.load(f)
         data = json.loads(self.serialize())
         jsonschema.validate(instance=data, schema=schema)
         print("✓ Diagram is valid against schema.json")
