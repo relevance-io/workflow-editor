@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'relevanceio.workflow_editor.django',
+    'workflow_editor_django.example',
 ]
 
 MIDDLEWARE = [

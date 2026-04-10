@@ -689,6 +689,13 @@ class DiagramEditor:
     const editor = new DiagramEditor(container);
     editor.registerBuiltInNodes();
     editor.deserialize(diagram, false, 'fit');
+
+    editor.on('change', () => {{
+      window.parent.postMessage(
+        {{ type: 'workflow:change', diagram: editor.serialize() }},
+        '*',
+      );
+    }});
   </script>
 </body>
 </html>"""

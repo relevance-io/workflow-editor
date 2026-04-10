@@ -5,6 +5,8 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
+from relevanceio.workflow_editor import DiagramEditor
+
 
 @staff_member_required
 @require_GET
@@ -12,9 +14,8 @@ def workflow_editor_view(request):
     """
     Render the Django admin workflow editor page.
 
-    Expects the following GET params (or override with your own lookup logic):
-      - Override `diagram`, `node_types`, and `post_url` below with
-        however you load/resolve them (e.g. from a model, session, etc.)
+    Override `diagram`, `node_types`, and `post_url` with however you load
+    or resolve them (e.g. from a model, session, query-string param, etc.).
     """
 
     # ── Replace these with your actual data sources ───────────────────────────
@@ -26,41 +27,20 @@ def workflow_editor_view(request):
         "nodeTypes": [],
     }
 
-    # List of custom node type definition dicts.
-    # Each dict mirrors the SerializedNodeType object schema.
-    node_types: list[dict] = [
-        # Example:
-        # {
-        #     "nodeClass": "TaskNode",
-        #     "baseClass": "RectangleNode",
-        #     "name": "Task",
-        #     "defaultOptions": {"label": "New Task", "backgroundColor": "#f0f8ff"},
-        #     "schema": {
-        #         "assignee": {"label": "Assignee", "type": "text", "default": ""},
-        #         "done": {"label": "Done", "type": "boolean", "default": False},
-        #         "priority": {
-        #             "label": "Priority",
-        #             "type": "choice",
-        #             "default": "medium",
-        #             "choices": {"low": "Low", "medium": "Medium", "high": "High"},
-        #         },
-        #     },
-        #     "visibleProps": ["label", "backgroundColor"],
-        # }
-    ]
-
     # URL that receives POST requests whenever the diagram changes.
     post_url: str = "/admin/workflow/save/"  # replace with reverse("your-save-view")
 
     # ─────────────────────────────────────────────────────────────────────────
 
-    return render(request, "admin/workflow_editor.html", {
+    editor = DiagramEditor()
+    editor.register_builtin_nodes()
 
-        # Serialise to JSON strings so the template can embed them safely.
-        "diagram_json": json.dumps(diagram),
-        "node_types_json": json.dumps(node_types),
+    if diagram.get("nodes"):
+        editor.deserialize(diagram)
+
+    return render(request, "admin/workflow_editor.html", {
+        "editor_html": editor.render(width="100%", height="100%"),
         "post_url": post_url,
-        # Standard admin context extras (title shown in the breadcrumb bar).
         "title": "Workflow Editor",
         "has_permission": True,
     })
