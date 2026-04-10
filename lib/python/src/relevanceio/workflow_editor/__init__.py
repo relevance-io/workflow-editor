@@ -688,7 +688,7 @@ class DiagramEditor:
 
     const editor = new DiagramEditor(container);
     editor.registerBuiltInNodes();
-    editor.deserialize(diagram, false, 'fit');
+    editor.deserialize(diagram);
 
     editor.on('change', () => {{
       window.parent.postMessage(

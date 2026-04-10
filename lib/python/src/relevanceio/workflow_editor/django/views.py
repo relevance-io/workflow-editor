@@ -1,7 +1,6 @@
 import json
 from typing import Type
 
-from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -17,24 +16,17 @@ from .models import BaseWorkflow, SimpleWorkflow
 
 class WorkflowViewSet:
     """
-    Registers editor + save views, and a matching ModelAdmin, for a
-    BaseWorkflow subclass — all under a single, consistent URL namespace.
+    Registers editor + save views for a BaseWorkflow subclass under a given
+    URL namespace.
 
-    Usage in urls.py:
+    Admin registration is intentionally left to the caller. Use
+    build_admin_class() to get a concrete WorkflowAdmin subclass with the
+    correct editor URL already wired, then pass it to admin.site.register():
 
-        from relevanceio.workflow_editor.django.views import WorkflowViewSet
-        from myapp.models import MyWorkflow
-        from myapp.admin import MyWorkflowAdmin
+        viewset = WorkflowViewSet(model=MyWorkflow, app_name='myapp')
 
-        viewset = WorkflowViewSet(
-            model=MyWorkflow,
-            app_name='myapp',
-            url_prefix='workflows',
-            admin_class=MyWorkflowAdmin,   # optional, defaults to WorkflowAdmin
-        )
-
-        # In the urlconf that carries app_name='myapp':
-        urlpatterns = [*viewset.urls]
+        # in admin.py:
+        admin.site.register(MyWorkflow, viewset.build_admin_class())
 
     Parameters
     ----------
@@ -42,17 +34,13 @@ class WorkflowViewSet:
         A concrete subclass of BaseWorkflow.
     app_name:
         The namespace this viewset's URLs will be registered under.
-        Must match the app_name of the including urlconf so that
-        reverse(f'{app_name}:editor', ...) works correctly.
+        Must match the app_name of the including urlconf.
     url_prefix:
         Path prefix for the generated URL patterns (no leading/trailing slash).
         Defaults to 'workflows'.
     workflow_name_attr:
         Attribute on the model instance used as the display name in the editor
         template. Defaults to 'title'. Falls back to str(obj) if absent.
-    admin_class:
-        A WorkflowAdmin subclass to register. When None (default), a concrete
-        subclass is generated automatically with editor_url_name pre-filled.
     """
 
     def __init__(
@@ -62,49 +50,44 @@ class WorkflowViewSet:
         app_name: str,
         url_prefix: str = 'workflows',
         workflow_name_attr: str = 'title',
-        admin_class: Type[WorkflowAdmin] | None = None,
     ) -> None:
         self.model = model
         self.app_name = app_name
         self.url_prefix = url_prefix.strip('/')
         self.workflow_name_attr = workflow_name_attr
 
-        self._register_admin(admin_class)
+    # ── Admin helper ──────────────────────────────────────────────────────────
 
-    # ── Admin registration ────────────────────────────────────────────────────
-
-    def _build_admin_class(self) -> Type[WorkflowAdmin]:
+    def build_admin_class(self) -> Type[WorkflowAdmin]:
         """
-        Produce a WorkflowAdmin subclass with editor_url_name set to the
-        correct namespaced URL for this viewset.
+        Return a concrete WorkflowAdmin subclass with get_editor_url() already
+        implemented for this viewset's namespace.
+
+        Pass the result to admin.site.register() in your admin.py:
+
+            admin.site.register(MyWorkflow, viewset.build_admin_class())
         """
         editor_url_name = f'{self.app_name}:editor'
+        workflow_name_attr = self.workflow_name_attr
 
         return type(
             f'{self.model.__name__}Admin',
             (WorkflowAdmin,),
             {
-                'editor_url_name': editor_url_name,
                 'list_display': (
-                    self.workflow_name_attr,
+                    workflow_name_attr,
                     '_node_count',
                     '_edge_count',
                     '_editor_link',
                 ),
                 'readonly_fields': ('_editor_link',),
-                'fields': (self.workflow_name_attr, '_editor_link'),
+                'fields': (workflow_name_attr, '_editor_link'),
                 'get_editor_url': lambda self_admin, obj: reverse(
                     editor_url_name,
                     kwargs={'pk': obj.pk},
                 ),
             },
         )
-
-    def _register_admin(self, admin_class: Type[WorkflowAdmin] | None) -> None:
-        concrete_admin_class = admin_class or self._build_admin_class()
-
-        if not admin.site.is_registered(self.model):
-            admin.site.register(self.model, concrete_admin_class)
 
     # ── URL helpers ───────────────────────────────────────────────────────────
 
@@ -221,7 +204,15 @@ class SimpleWorkflowViewSet(WorkflowViewSet):
     Ready-to-use WorkflowViewSet wired to SimpleWorkflow.
 
     The app_name must match the namespace the including urlconf declares.
-    The example project passes app_name='workflow_editor_django.example'.
+
+    Admin registration is not automatic. In your admin.py:
+
+        from django.contrib import admin
+        from relevanceio.workflow_editor.django.views import SimpleWorkflowViewSet
+        from relevanceio.workflow_editor.django.models import SimpleWorkflow
+
+        _viewset = SimpleWorkflowViewSet(app_name='myapp')
+        admin.site.register(SimpleWorkflow, _viewset.build_admin_class())
     """
 
     def __init__(self, *, app_name: str) -> None:

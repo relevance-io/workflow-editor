@@ -6,11 +6,9 @@ class WorkflowAdmin(admin.ModelAdmin):
     """
     Base admin class for BaseWorkflow subclasses.
 
-    Do not register this class directly. Use WorkflowViewSet, which builds a
-    concrete subclass with the correct editor URL namespace baked in, then
-    registers it automatically.
-
-    Subclasses must implement get_editor_url(obj) → str.
+    Do not instantiate or register directly. Use WorkflowViewSet.build_admin_class()
+    to get a concrete subclass with get_editor_url() already implemented, then
+    pass it to admin.site.register() in your admin.py.
     """
 
     @admin.display(description='Nodes')
@@ -30,29 +28,7 @@ class WorkflowAdmin(admin.ModelAdmin):
         return format_html('<a class="button" href="{}">&#9998; Edit Diagram</a>', url)
 
     def get_editor_url(self, obj) -> str:
-        """Return the editor URL for obj. Implemented by WorkflowViewSet."""
+        """Implemented by the class produced by WorkflowViewSet.build_admin_class()."""
         raise NotImplementedError(
             f'{self.__class__.__name__} must implement get_editor_url()'
         )
-
-
-class SimpleWorkflowAdmin(WorkflowAdmin):
-    """
-    Concrete admin for SimpleWorkflow.
-
-    Registered by SimpleWorkflowViewSet, not directly. The editor_url_name
-    class attribute is set by WorkflowViewSet.build_admin_class() to match
-    whatever namespace the viewset was registered under.
-    """
-
-    # Injected by WorkflowViewSet.build_admin_class(), e.g.:
-    #   'workflow_editor_django.example:editor'
-    editor_url_name: str = ''
-
-    list_display = ('title', '_node_count', '_edge_count', 'updated_at', '_editor_link')
-    readonly_fields = ('created_at', 'updated_at', '_editor_link')
-    fields = ('title', '_editor_link', 'created_at', 'updated_at')
-
-    def get_editor_url(self, obj) -> str:
-        from django.urls import reverse
-        return reverse(self.editor_url_name, kwargs={'pk': obj.pk})
