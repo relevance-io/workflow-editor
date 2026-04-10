@@ -1,4 +1,18 @@
-{% extends "admin/base_site.html" %} {% load i18n %} {% block title %}Workflow Editor | {{ site_title|default:_('Django site admin') }}{% endblock %} {% block extrahead %} {{ block.super }}
+{% extends "admin/base_site.html" %} {% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
+  {% if opts %}
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_change' workflow.pk %}">{{ workflow.name }}</a>
+  &rsaquo; {% trans "Workflow Editor" %}
+  {% else %}
+  &rsaquo; {% trans "Workflow Editor" %}
+  {% endif %}
+</div>
+{% endblock %} {% block title %}Workflow Editor | {{ site_title|default:_('Django site admin') }}{% endblock %} {% block extrahead %} {{ block.super }}
 <style>
   #workflow-editor-frame {
     width: 100%;

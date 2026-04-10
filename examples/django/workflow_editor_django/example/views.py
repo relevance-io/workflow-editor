@@ -34,8 +34,10 @@ def workflow_editor_view(request, pk: int):
     return render(request, 'admin/workflow_editor.html', {
         'editor_html': editor_html,
         'post_url': post_url,
-        'title': f'Edit Workflow — {workflow.name}',
+        'title': 'Workflow Editor',
         'has_permission': True,
+        'opts': Workflow._meta,
+        'workflow': workflow,
     })
 
 
