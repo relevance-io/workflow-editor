@@ -647,10 +647,28 @@ class DiagramEditor:
 
     # ── HTML render ───────────────────────────────────────────────────────────
 
-    def render(self, width: str = "100%", height: str = "600px") -> str:
+    def render(
+        self,
+        width: str = "100%",
+        height: str = "600px",
+        *,
+        auto_arrange: bool = False,
+        center: bool = False,
+    ) -> str:
         """
         Return a self-contained HTML string that renders the current diagram
         in the browser using the bundled JS and CSS assets.
+
+        Parameters
+        ----------
+        width, height:
+            CSS dimensions of the editor container.
+        auto_arrange:
+            When True, calls editor.autoArrange() after the diagram loads.
+            Useful for diagrams built headlessly without explicit coordinates.
+        center:
+            When True, calls editor.zoomToFit() after the diagram loads so
+            the full canvas is visible on open.
 
         Usage in a Jupyter notebook:
             from IPython.display import HTML
@@ -668,6 +686,12 @@ class DiagramEditor:
 
         # Escape </script> sequences that would break the inline script block.
         safe_json = diagram_json.replace("</", "<\\/")
+
+        post_load_calls = ""
+        if auto_arrange:
+            post_load_calls += "\n    await editor.autoArrange();"
+        if center:
+            post_load_calls += "\n    await editor.zoomToFit();"
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -688,7 +712,7 @@ class DiagramEditor:
 
     const editor = new DiagramEditor(container);
     editor.registerBuiltInNodes();
-    editor.deserialize(diagram);
+    await editor.deserialize(diagram);{post_load_calls}
 
     editor.on('change', () => {{
       window.parent.postMessage(

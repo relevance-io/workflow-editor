@@ -1,6 +1,7 @@
 import json
 from typing import Type
 
+from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -39,8 +40,8 @@ class WorkflowViewSet:
         Path prefix for the generated URL patterns (no leading/trailing slash).
         Defaults to 'workflows'.
     workflow_name_attr:
-        Attribute on the model instance used as the display name in the editor
-        template. Defaults to 'title'. Falls back to str(obj) if absent.
+        Attribute on the model instance used as the display name in the
+        breadcrumb and editor template. Defaults to 'title'.
     """
 
     def __init__(
@@ -56,11 +57,11 @@ class WorkflowViewSet:
         self.url_prefix = url_prefix.strip('/')
         self.workflow_name_attr = workflow_name_attr
 
-    # ── Admin helper ──────────────────────────────────────────────────────────
+    # ── Admin helper ─────────────────────────────────────────────────────────────────────────────
 
     def build_admin_class(self) -> Type[WorkflowAdmin]:
         """
-        Return a concrete WorkflowAdmin subclass with get_editor_url() already
+        Return a concrete WorkflowAdmin subclass with get_editor_url()
         implemented for this viewset's namespace.
 
         Pass the result to admin.site.register() in your admin.py:
@@ -89,7 +90,7 @@ class WorkflowViewSet:
             },
         )
 
-    # ── URL helpers ───────────────────────────────────────────────────────────
+    # ── URL helpers ────────────────────────────────────────────────────────────────────────────
 
     @property
     def editor_url_name(self) -> str:
@@ -115,7 +116,7 @@ class WorkflowViewSet:
             ),
         ]
 
-    # ── Hooks for subclasses ──────────────────────────────────────────────────
+    # ── Hooks for subclasses ─────────────────────────────────────────────────────────────────────
 
     def get_workflow_name(self, obj: BaseWorkflow) -> str:
         return str(getattr(obj, self.workflow_name_attr, obj))
@@ -133,7 +134,7 @@ class WorkflowViewSet:
         editor.register_builtin_nodes()
         return editor
 
-    # ── Internal views ────────────────────────────────────────────────────────
+    # ── Internal views ──────────────────────────────────────────────────────────────────────────
 
     @property
     def _editor_view(self):
@@ -160,6 +161,7 @@ class WorkflowViewSet:
                 'has_permission': True,
                 'opts': viewset.model._meta,
                 'workflow': obj,
+                'workflow_name': viewset.get_workflow_name(obj),
             })
 
         return editor_view
