@@ -18,10 +18,6 @@
 
 {% block extrahead %} {{ block.super }}
 <style>
-  /*
-   * Override #content overflow so the iframe can fill the full viewport
-   * height without triggering a scrollbar on the parent.
-   */
   #content {
     overflow: hidden;
     display: flex;
@@ -109,14 +105,11 @@
 {% endblock %}
 
 {% block content %}
-{# editor.render() produces a fully self-contained HTML page (bundled JS + CSS).
-   We embed it in a sandboxed iframe; the postMessage bridge below lets the
-   outer page intercept `change` events and POST the diagram to post_url. #}
 <div id="workflow-editor-wrap">
   <iframe
     id="workflow-editor-frame"
     sandbox="allow-scripts allow-same-origin"
-    srcdoc="{{ editor_html }}"
+    srcdoc="{{ editor_html|force_escape }}"
   ></iframe>
 </div>
 
