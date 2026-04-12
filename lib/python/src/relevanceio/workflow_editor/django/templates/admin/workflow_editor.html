@@ -1,28 +1,16 @@
-{% extends "admin/base_site.html" %} {% load i18n %}
-
-{% block breadcrumbs %}
+{% extends "admin/base_site.html" %} {% load i18n %} {% block breadcrumbs %}
 <div class="breadcrumbs">
   <a href="{% url 'admin:index' %}">{% trans "Home" %}</a>
-  {% if opts %}
-  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
-  &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
-  &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_change' workflow.pk %}">{{ workflow_name }}</a>
-  &rsaquo; {% trans "Workflow Editor" %}
-  {% else %}
-  &rsaquo; {% trans "Workflow Editor" %}
-  {% endif %}
+  {% if opts %} &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a> &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a> &rsaquo; <a href="{% url 'admin:'|add:opts.app_label|add:'_'|add:opts.model_name|add:'_change' workflow.pk %}">{{ workflow_name }}</a>
+  &rsaquo; {% trans "Workflow Editor" %} {% else %} &rsaquo; {% trans "Workflow Editor" %} {% endif %}
 </div>
-{% endblock %}
-
-{% block title %}Workflow Editor | {{ site_title|default:_("Django site admin") }}{% endblock %}
-
-{% block extrahead %} {{ block.super }}
+{% endblock %} {% block title %}Workflow Editor | {{ site_title|default:_("Django site admin") }}{% endblock %} {% block extrahead %} {{ block.super }}
 <style>
   #content {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 125px);
     padding-bottom: 0;
   }
 
@@ -59,9 +47,15 @@
     transition: background 0.3s;
   }
 
-  #workflow-editor-status .dot.saving { background: #f0ad4e; }
-  #workflow-editor-status .dot.saved  { background: #5cb85c; }
-  #workflow-editor-status .dot.error  { background: #d9534f; }
+  #workflow-editor-status .dot.saving {
+    background: #f0ad4e;
+  }
+  #workflow-editor-status .dot.saved {
+    background: #5cb85c;
+  }
+  #workflow-editor-status .dot.error {
+    background: #d9534f;
+  }
 
   #workflow-editor-toolbar {
     display: inline-flex;
@@ -85,9 +79,7 @@
     cursor: pointer;
   }
 </style>
-{% endblock %}
-
-{% block content_title %}
+{% endblock %} {% block content_title %}
 <h1>
   {% trans "Workflow Editor" %}
   <span id="workflow-editor-status">
@@ -96,31 +88,25 @@
   </span>
   <span id="workflow-editor-toolbar">
     <label>
-      <input type="checkbox" id="workflow-autosave" checked>
+      <input type="checkbox" id="workflow-autosave" checked />
       {% trans "Auto-save" %}
     </label>
     <button id="workflow-save-btn" class="button">{% trans "Save" %}</button>
   </span>
 </h1>
-{% endblock %}
-
-{% block content %}
+{% endblock %} {% block content %}
 <div id="workflow-editor-wrap">
-  <iframe
-    id="workflow-editor-frame"
-    sandbox="allow-scripts allow-same-origin"
-    srcdoc="{{ editor_html|force_escape }}"
-  ></iframe>
+  <iframe id="workflow-editor-frame" sandbox="allow-scripts allow-same-origin" srcdoc="{{ editor_html|force_escape }}"></iframe>
 </div>
 
 <script>
-  const POST_URL      = "{{ post_url|escapejs }}";
-  const dot           = document.getElementById("status-dot");
-  const statusLabel   = document.getElementById("status-label");
+  const POST_URL = "{{ post_url|escapejs }}";
+  const dot = document.getElementById("status-dot");
+  const statusLabel = document.getElementById("status-label");
   const autosaveCheck = document.getElementById("workflow-autosave");
-  const saveBtn       = document.getElementById("workflow-save-btn");
+  const saveBtn = document.getElementById("workflow-save-btn");
 
-  let saveTimer   = null;
+  let saveTimer = null;
   let lastDiagram = null;
 
   function setStatus(state, text) {
@@ -129,9 +115,7 @@
   }
 
   function getCookie(name) {
-    const match = document.cookie.match(
-      new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[\]\/+^])/g, "\\$1") + "=([^;]*)")
-    );
+    const match = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[\]\/+^])/g, "\\$1") + "=([^;]*)"));
     return match ? decodeURIComponent(match[1]) : "";
   }
 
