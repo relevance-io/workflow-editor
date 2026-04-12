@@ -69,7 +69,7 @@ export class Edge extends EventBus {
   private _labelColor: string = config.colors.edge_label;
   private _labelFontSize: number = config.font_sizes.percent_default;
   private _lineColor: string = config.colors.edge_line;
-  private _lineWidth: number = 2;
+  private _lineWidth: number = config.node_sizes.edge_line_width;
   private _lineStyle: LineStyle = 'solid';
   private _sourceArrow: ArrowMarkerName = 'none';
   private _targetArrow: ArrowMarkerName = 'classic';

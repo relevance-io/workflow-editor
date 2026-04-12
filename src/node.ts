@@ -32,7 +32,7 @@ export class DiagramNode extends EventBus {
   private _descriptionColor: string = config.colors.description;
   private _backgroundColor: string = config.colors.node_background;
   private _borderColor: string = config.colors.node_border;
-  private _borderWidth: number = 2;
+  private _borderWidth: number = config.node_sizes.border_width;
   private _imageUrl: string = '';
   private _imageWidth: number = config.image_dimensions.default_width;
   private _imageHeight: number = config.image_dimensions.default_height;
