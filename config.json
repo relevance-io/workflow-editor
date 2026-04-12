@@ -15,6 +15,8 @@
   "node_sizes": {
     "default_width": 140,
     "default_height": 50,
+    "border_width": 2,
+    "edge_line_width": 2,
     "squarish_size": 80,
     "min_width": 140,
     "min_height": 50,
