@@ -22,6 +22,80 @@ ArrowMarkerName = Literal["none", "classic", "block"]
 LineStyle       = Literal["solid", "dashed", "dotted"]
 ConnectorType   = Literal["elbow", "straight", "curved"]
 
+
+class _NodesConfig(TypedDict, total=False):
+    background_color: str
+    border_color: str
+    label_color: str
+    description_color: str
+    label_font_size: int
+    description_font_size: int
+    font_size_percent_default: int
+    default_width: int
+    default_height: int
+    squarish_size: int
+    min_width: int
+    min_height: int
+    min_squarish_size: int
+    border_width: int
+    image_width: int
+    image_height: int
+    aspect_ratio: float
+    triangle_scale: float
+
+
+class _EdgesConfig(TypedDict, total=False):
+    line_color: str
+    label_color: str
+    label_background_color: str
+    label_background_opacity: float
+    label_font_size: int
+    line_width: int
+
+
+class _DiagramConfig(TypedDict, total=False):
+    grid_dot_color: str
+    divider_color: str
+    accent_color: str
+    port_radius: int
+    port_stroke_width: int
+    node_padding: int
+    image_spacing: int
+    duplicate_offset: int
+    selection_padding: int
+    selection_stroke_width: int
+    edge_remove_distance: int
+    edge_elbow_padding: int
+    snap_radius: int
+    router_padding: int
+    router_max_iter: int
+    spiral_search_limit: int
+
+
+class _ZoomConfig(TypedDict, total=False):
+    min: float
+    max: float
+    in_factor: float
+    out_factor: float
+    fit_min_scale: float
+    fit_max_scale: float
+    fit_padding: int
+    wheel_sensitivity: float
+
+
+class _TimingConfig(TypedDict, total=False):
+    sidebar_resize_interval: int
+    sidebar_anim_duration: int
+    blob_url_revoke_delay: int
+
+
+class Configuration(TypedDict, total=False):
+    nodes: _NodesConfig
+    edges: _EdgesConfig
+    diagram: _DiagramConfig
+    zoom: _ZoomConfig
+    timing: _TimingConfig
+
 # Built-in node classes (mirrors src/nodes.ts)
 BUILTIN_NODE_CLASSES = {
     "RectangleNode", "SquareNode", "EllipseNode", "CircleNode",
@@ -50,7 +124,7 @@ def _get_asset(filename: str) -> str:
     raise FileNotFoundError(f'{filename} not found along search paths')
 
 
-config  = _get_asset("config.json")
+defaultConfig: Configuration = _get_asset("config.json")
 _schema = _get_asset("schema.json")
 
 
@@ -72,16 +146,16 @@ class NodeOptions(TypedDict, total=False):
 
 _NODE_OPTIONS_DEFAULTS: NodeOptions = {
     'label':            '',
-    'labelColor':       config['nodes']['label_color'],
-    'labelFontSize':    config['nodes']['font_size_percent_default'],
+    'labelColor':       defaultConfig['nodes']['label_color'],
+    'labelFontSize':    defaultConfig['nodes']['font_size_percent_default'],
     'description':      '',
-    'descriptionColor': config['nodes']['description_color'],
-    'backgroundColor':  config['nodes']['background_color'],
-    'borderColor':      config['nodes']['border_color'],
-    'borderWidth':      config['nodes']['border_width'],
+    'descriptionColor': defaultConfig['nodes']['description_color'],
+    'backgroundColor':  defaultConfig['nodes']['background_color'],
+    'borderColor':      defaultConfig['nodes']['border_color'],
+    'borderWidth':      defaultConfig['nodes']['border_width'],
     'imageUrl':         '',
-    'imageWidth':       config['nodes']['image_width'],
-    'imageHeight':      config['nodes']['image_height'],
+    'imageWidth':       defaultConfig['nodes']['image_width'],
+    'imageHeight':      defaultConfig['nodes']['image_height'],
 }
 
 
@@ -338,10 +412,10 @@ class Edge:
         target: DiagramNode,
         *,
         label:          str             = "",
-        labelColor:     str             = config['edges']['label_color'],
-        labelFontSize:  int             = config['nodes']['font_size_percent_default'],
-        lineColor:      str             = config['edges']['line_color'],
-        lineWidth:      int             = config['edges']['line_width'],
+        labelColor:     str             = defaultConfig['edges']['label_color'],
+        labelFontSize:  int             = defaultConfig['nodes']['font_size_percent_default'],
+        lineColor:      str             = defaultConfig['edges']['line_color'],
+        lineWidth:      int             = defaultConfig['edges']['line_width'],
         lineStyle:      LineStyle       = "solid",
         sourceArrow:    ArrowMarkerName = "none",
         targetArrow:    ArrowMarkerName = "classic",
@@ -427,7 +501,15 @@ class DiagramEditor:
         editor2.deserialize(json_str)
     """
 
-    def __init__(self):
+    def __init__(self, config: Configuration | None = None):
+        merged = deepcopy(defaultConfig)
+        if config:
+            for key, section in config.items():
+                if key in merged and isinstance(merged[key], dict):
+                    merged[key].update(section)
+                else:
+                    merged[key] = section
+        self.config: Configuration = merged
         self._nodes: dict[str, DiagramNode] = {}
         self._edges: list[Edge] = []
         self._registered_node_types: dict[str, type[DiagramNode]] = {}
@@ -495,28 +577,28 @@ class DiagramEditor:
         source: DiagramNode,
         target: DiagramNode,
         *,
-        label:           str             = "",
-        labelColor:      str             = config['edges']['label_color'],
-        labelFontSize:   int             = config['nodes']['font_size_percent_default'],
-        lineColor:       str             = config['edges']['line_color'],
-        lineWidth:       int             = config['edges']['line_width'],
-        lineStyle:       LineStyle       = "solid",
-        sourceArrow:     ArrowMarkerName = "none",
-        targetArrow:     ArrowMarkerName = "classic",
-        connectorType:   ConnectorType   = "elbow",
-        description:     str             = "",
-        sourcePort:      Optional[int]   = None,
-        targetPort:      Optional[int]   = None,
-        vertices:        list[Point]     | None = None,
+        label:           str                  = "",
+        labelColor:      str | None           = None,
+        labelFontSize:   int | None           = None,
+        lineColor:       str | None           = None,
+        lineWidth:       int | None           = None,
+        lineStyle:       LineStyle            = "solid",
+        sourceArrow:     ArrowMarkerName      = "none",
+        targetArrow:     ArrowMarkerName      = "classic",
+        connectorType:   ConnectorType        = "elbow",
+        description:     str                  = "",
+        sourcePort:      Optional[int]        = None,
+        targetPort:      Optional[int]        = None,
+        vertices:        list[Point] | None   = None,
     ) -> Edge:
         """Connect two nodes and return the new Edge."""
         edge = Edge(
             source, target,
             label=label,
-            labelColor=labelColor,
-            labelFontSize=labelFontSize,
-            lineColor=lineColor,
-            lineWidth=lineWidth,
+            labelColor=labelColor or self.config['edges']['label_color'],
+            labelFontSize=labelFontSize or self.config['nodes']['font_size_percent_default'],
+            lineColor=lineColor or self.config['edges']['line_color'],
+            lineWidth=lineWidth or self.config['edges']['line_width'],
             lineStyle=lineStyle,
             sourceArrow=sourceArrow,
             targetArrow=targetArrow,
@@ -684,10 +766,10 @@ class DiagramEditor:
             self._edges.append(Edge(
                 src, tgt,
                 label=ed.get("label", ""),
-                labelColor=ed.get("labelColor", config['edges']['label_color']),
-                labelFontSize=ed.get("labelFontSize", config['nodes']['font_size_percent_default']),
-                lineColor=ed.get("lineColor", config['edges']['line_color']),
-                lineWidth=ed.get("lineWidth", config['edges']['line_width']),
+                labelColor=ed.get("labelColor", self.config['edges']['label_color']),
+                labelFontSize=ed.get("labelFontSize", self.config['nodes']['font_size_percent_default']),
+                lineColor=ed.get("lineColor", self.config['edges']['line_color']),
+                lineWidth=ed.get("lineWidth", self.config['edges']['line_width']),
                 lineStyle=ed.get("lineStyle", "solid"),
                 sourceArrow=ed.get("sourceArrow", "none"),
                 targetArrow=ed.get("targetArrow", "classic"),
