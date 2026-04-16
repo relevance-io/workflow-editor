@@ -1,4 +1,4 @@
-import { config } from './config';
+import { defaultConfig } from './config';
 import { DiagramEditor } from './editor';
 import { DiagramNode } from './node';
 import { EventBus } from './eventbus';
@@ -66,10 +66,11 @@ export class Edge extends EventBus {
 
   // headless backing fields
   private _label: string = '';
-  private _labelColor: string = config.edges.label_color;
-  private _labelFontSize: number = config.nodes.font_size_percent_default;
-  private _lineColor: string = config.edges.line_color;
-  private _lineWidth: number = config.edges.line_width;
+  private _labelColor: string = defaultConfig.edges.label_color;
+  private _labelFontSize: number =
+    defaultConfig.nodes.font_size_percent_default;
+  private _lineColor: string = defaultConfig.edges.line_color;
+  private _lineWidth: number = defaultConfig.edges.line_width;
   private _lineStyle: LineStyle = 'solid';
   private _sourceArrow: ArrowMarkerName = 'none';
   private _targetArrow: ArrowMarkerName = 'classic';
@@ -117,7 +118,9 @@ export class Edge extends EventBus {
 
   public get labelColor(): string {
     if (!this.link) return this._labelColor;
-    return this.link.label(0)?.attrs?.text?.fill || config.edges.label_color;
+    return (
+      this.link.label(0)?.attrs?.text?.fill || defaultConfig.edges.label_color
+    );
   }
   public set labelColor(value: string) {
     this._labelColor = value;
@@ -131,7 +134,8 @@ export class Edge extends EventBus {
   public get labelFontSize(): number {
     if (!this.link) return this._labelFontSize;
     return (
-      this.link.get('fontSizePercent') || config.nodes.font_size_percent_default
+      this.link.get('fontSizePercent') ||
+      defaultConfig.nodes.font_size_percent_default
     );
   }
   public set labelFontSize(value: number) {
@@ -145,7 +149,7 @@ export class Edge extends EventBus {
 
   public get lineColor(): string {
     if (!this.link) return this._lineColor;
-    return this.link.attr('line/stroke') || config.edges.line_color;
+    return this.link.attr('line/stroke') || defaultConfig.edges.line_color;
   }
   public set lineColor(value: string) {
     this._lineColor = value;
@@ -218,7 +222,7 @@ export class Edge extends EventBus {
       if (value === 'elbow') {
         this.link.router('manhattan', {
           step: gridSize,
-          padding: config.diagram.edge_elbow_padding,
+          padding: defaultConfig.diagram.edge_elbow_padding,
         });
         this.link.connector('rounded');
       } else if (value === 'straight') {
@@ -287,18 +291,20 @@ export class Edge extends EventBus {
 
   private _applyLabel(text: string): void {
     const fontSize =
-      config.edges.label_font_size *
-      ((this.link.get('fontSizePercent') || config.nodes.font_size_percent_default) /
-        config.nodes.font_size_percent_default);
-    const color = this.link.get('labelColor') || config.edges.label_color;
+      defaultConfig.edges.label_font_size *
+      ((this.link.get('fontSizePercent') ||
+        defaultConfig.nodes.font_size_percent_default) /
+        defaultConfig.nodes.font_size_percent_default);
+    const color =
+      this.link.get('labelColor') || defaultConfig.edges.label_color;
     if (text) {
       this.link.labels([
         {
           attrs: {
             text: { text, fill: color, fontSize, textVerticalAnchor: 'middle' },
             rect: {
-              fill: config.edges.label_background_color,
-              opacity: config.edges.label_background_opacity,
+              fill: defaultConfig.edges.label_background_color,
+              opacity: defaultConfig.edges.label_background_opacity,
             },
           },
           position: { distance: 0.5 },

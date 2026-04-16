@@ -1,4 +1,4 @@
-import { config } from './config';
+import { defaultConfig } from './config';
 import { DiagramEditor } from './editor';
 import { EventBus } from './eventbus';
 import { Edge } from './edges';
@@ -26,16 +26,16 @@ export class DiagramNode extends EventBus {
   // headless backing fields
   private _headlessX?: number;
   private _headlessY?: number;
-  private _labelColor: string = config.nodes.label_color;
-  private _labelFontSize: number = config.nodes.font_size_percent_default;
+  private _labelColor: string = defaultConfig.nodes.label_color;
+  private _labelFontSize: number = defaultConfig.nodes.font_size_percent_default;
   private _description: string = '';
-  private _descriptionColor: string = config.nodes.description_color;
-  private _backgroundColor: string = config.nodes.background_color;
-  private _borderColor: string = config.nodes.border_color;
-  private _borderWidth: number = config.nodes.border_width;
+  private _descriptionColor: string = defaultConfig.nodes.description_color;
+  private _backgroundColor: string = defaultConfig.nodes.background_color;
+  private _borderColor: string = defaultConfig.nodes.border_color;
+  private _borderWidth: number = defaultConfig.nodes.border_width;
   private _imageUrl: string = '';
-  private _imageWidth: number = config.nodes.image_width;
-  private _imageHeight: number = config.nodes.image_height;
+  private _imageWidth: number = defaultConfig.nodes.image_width;
+  private _imageHeight: number = defaultConfig.nodes.image_height;
 
   constructor(options: NodeOptions | string = {}) {
     super();
@@ -284,7 +284,6 @@ export class DiagramNode extends EventBus {
   public _buildCell(
     position: Point,
     jointNamespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
     throw new Error('_buildCell must be implemented by subclass');
   }

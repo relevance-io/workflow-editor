@@ -1,4 +1,4 @@
-import * as defaultConfig from '../config.json';
+import * as defaultConfigJson from '../config.json';
 
 export class Configuration {
   nodes!: {
@@ -115,7 +115,7 @@ export class Configuration {
   };
 
   constructor(config?: Partial<Configuration>) {
-    Object.assign(this, defaultConfig);
+    Object.assign(this, defaultConfigJson);
 
     if (config) {
       for (const key in config) {
@@ -125,4 +125,4 @@ export class Configuration {
   }
 }
 
-export const config = new Configuration();
+export const defaultConfig = new Configuration();

@@ -1,4 +1,4 @@
-import { config } from './config';
+import { defaultConfig } from './config';
 import { _buildPolygonCell } from './internals';
 import { _buildEllipseCell } from './internals';
 import { _buildRectangleCell } from './internals';
@@ -20,15 +20,15 @@ export class RectangleNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildRectangleCell(
       position,
       namespace,
       'rect',
-      config.nodes.default_width,
-      config.nodes.default_height,
-      portRadius,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
+      cfg,
     );
     cell.set('nodeClass', 'RectangleNode');
     return cell;
@@ -45,15 +45,15 @@ export class SquareNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildRectangleCell(
       position,
       namespace,
       'square',
-      config.nodes.squarish_size,
-      config.nodes.squarish_size,
-      portRadius,
+      cfg.nodes.squarish_size,
+      cfg.nodes.squarish_size,
+      cfg,
     );
     cell.set('nodeClass', 'SquareNode');
     return cell;
@@ -70,15 +70,15 @@ export class EllipseNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildEllipseCell(
       position,
       namespace,
       'ellipse',
-      config.nodes.default_width,
-      config.nodes.default_height,
-      portRadius,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
+      cfg,
     );
     cell.set('nodeClass', 'EllipseNode');
     return cell;
@@ -95,15 +95,15 @@ export class CircleNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildEllipseCell(
       position,
       namespace,
       'circle',
-      config.nodes.squarish_size,
-      config.nodes.squarish_size,
-      portRadius,
+      cfg.nodes.squarish_size,
+      cfg.nodes.squarish_size,
+      cfg,
     );
     cell.set('nodeClass', 'CircleNode');
     return cell;
@@ -120,21 +120,21 @@ export class DiamondNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildPolygonCell(
       position,
       namespace,
       'diamond',
-      config.nodes.squarish_size,
-      config.nodes.squarish_size,
+      cfg.nodes.squarish_size,
+      cfg.nodes.squarish_size,
       [
         [0, 10],
         [10, 0],
         [20, 10],
         [10, 20],
       ],
-      portRadius,
+      cfg,
     );
     cell.set('nodeClass', 'DiamondNode');
     return cell;
@@ -151,20 +151,20 @@ export class TriangleNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildPolygonCell(
       position,
       namespace,
       'triangle',
-      config.nodes.default_width,
-      config.nodes.default_height,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
       [
         [10, 0],
         [20, 20],
         [0, 20],
       ],
-      portRadius,
+      cfg,
     );
     cell.set('nodeClass', 'TriangleNode');
     return cell;
@@ -181,14 +181,14 @@ export class HexagonNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildPolygonCell(
       position,
       namespace,
       'hexagon',
-      config.nodes.default_width,
-      config.nodes.default_height,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
       [
         [5, 0],
         [15, 0],
@@ -197,7 +197,7 @@ export class HexagonNode extends DiagramNode {
         [5, 20],
         [0, 10],
       ],
-      portRadius,
+      cfg,
     );
     cell.set('nodeClass', 'HexagonNode');
     return cell;
@@ -214,14 +214,14 @@ export class PentagonNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildPolygonCell(
       position,
       namespace,
       'pentagon',
-      config.nodes.default_width,
-      config.nodes.default_height,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
       [
         [10, 0],
         [20, 7],
@@ -229,7 +229,7 @@ export class PentagonNode extends DiagramNode {
         [4, 20],
         [0, 7],
       ],
-      portRadius,
+      cfg,
     );
     cell.set('nodeClass', 'PentagonNode');
     return cell;
@@ -246,14 +246,14 @@ export class OctagonNode extends DiagramNode {
   public _buildCell(
     position: Point,
     namespace: any,
-    portRadius: number = config.diagram.port_radius,
   ): any {
+    const cfg = this.editor?.config ?? defaultConfig;
     const cell = _buildPolygonCell(
       position,
       namespace,
       'octagon',
-      config.nodes.default_width,
-      config.nodes.default_height,
+      cfg.nodes.default_width,
+      cfg.nodes.default_height,
       [
         [6, 0],
         [14, 0],
@@ -264,7 +264,7 @@ export class OctagonNode extends DiagramNode {
         [0, 14],
         [0, 6],
       ],
-      portRadius,
+      cfg,
     );
     cell.set('nodeClass', 'OctagonNode');
     return cell;

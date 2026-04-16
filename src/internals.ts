@@ -1,11 +1,12 @@
-import { config } from './config';
+import type { Configuration } from './config';
 import { Point } from './types';
 
 export function _attachPortsToCell(
   cell: any,
   polygonPoints: number[][],
-  portRadius: number,
+  config: Configuration,
 ): void {
+  const portRadius = config.diagram.port_radius;
   cell.prop('ports/groups', {
     all: {
       position: 'absolute',
@@ -51,7 +52,7 @@ export function _buildRectangleCell(
   shapeType: string,
   width: number,
   height: number,
-  portRadius: number,
+  config: Configuration,
 ): any {
   const cell = new namespace.standard.Rectangle();
   cell.markup = [
@@ -67,10 +68,10 @@ export function _buildRectangleCell(
       rx: 5,
       ry: 5,
     },
-    ...SHARED_CELL_ATTRS,
+    ...SHARED_CELL_ATTRS(config),
   });
-  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, [], portRadius);
+  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS(config) });
+  _attachPortsToCell(cell, [], config);
   return cell;
 }
 export function _buildEllipseCell(
@@ -79,7 +80,7 @@ export function _buildEllipseCell(
   shapeType: string,
   width: number,
   height: number,
-  portRadius: number,
+  config: Configuration,
 ): any {
   const cell = new namespace.standard.Ellipse();
   cell.markup = [
@@ -93,10 +94,10 @@ export function _buildEllipseCell(
       stroke: config.nodes.border_color,
       strokeWidth: 2,
     },
-    ...SHARED_CELL_ATTRS,
+    ...SHARED_CELL_ATTRS(config),
   });
-  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, [], portRadius);
+  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS(config) });
+  _attachPortsToCell(cell, [], config);
   return cell;
 }
 export function _buildPolygonCell(
@@ -106,7 +107,7 @@ export function _buildPolygonCell(
   width: number,
   height: number,
   points: number[][],
-  portRadius: number,
+  config: Configuration,
 ): any {
   const cell = new namespace.standard.Polygon();
   cell.markup = [
@@ -121,34 +122,38 @@ export function _buildPolygonCell(
       stroke: config.nodes.border_color,
       strokeWidth: 2,
     },
-    ...SHARED_CELL_ATTRS,
+    ...SHARED_CELL_ATTRS(config),
   });
-  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS });
-  _attachPortsToCell(cell, points, portRadius);
+  cell.set({ type: shapeType, ...SHARED_CELL_DEFAULTS(config) });
+  _attachPortsToCell(cell, points, config);
   return cell;
 }
-export const SHARED_CELL_DEFAULTS = {
-  description: '',
-  imageUrl: '',
-  imageWidth: config.nodes.image_width,
-  imageHeight: config.nodes.image_height,
-  fontSizePercent: config.nodes.font_size_percent_default,
-};
-export const SHARED_CELL_ATTRS = {
-  image: { display: 'none' },
-  label: {
-    fill: config.nodes.label_color,
-    fontSize: config.nodes.label_font_size,
-    fontWeight: 'bold',
-    pointerEvents: 'none',
-  },
-  descriptionLabel: {
-    text: '',
-    fill: config.nodes.description_color,
-    fontSize: config.nodes.description_font_size,
-    pointerEvents: 'none',
-  },
-}; // =============================================================
+export function SHARED_CELL_DEFAULTS(config: Configuration) {
+  return {
+    description: '',
+    imageUrl: '',
+    imageWidth: config.nodes.image_width,
+    imageHeight: config.nodes.image_height,
+    fontSizePercent: config.nodes.font_size_percent_default,
+  };
+}
+export function SHARED_CELL_ATTRS(config: Configuration) {
+  return {
+    image: { display: 'none' },
+    label: {
+      fill: config.nodes.label_color,
+      fontSize: config.nodes.label_font_size,
+      fontWeight: 'bold',
+      pointerEvents: 'none',
+    },
+    descriptionLabel: {
+      text: '',
+      fill: config.nodes.description_color,
+      fontSize: config.nodes.description_font_size,
+      pointerEvents: 'none',
+    },
+  };
+} // =============================================================
 // Shared JointJS cell construction helpers
 // =============================================================
 
