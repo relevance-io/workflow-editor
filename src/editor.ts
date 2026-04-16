@@ -696,11 +696,13 @@ export class DiagramEditor extends EventBus {
           sourcePort: headlessEdge.props.sourcePort ?? null,
           targetPort: headlessEdge.props.targetPort ?? null,
           label: headlessEdge.props.label ?? '',
-          labelColor: headlessEdge.props.labelColor ?? this.config.edges.label_color,
+          labelColor:
+            headlessEdge.props.labelColor ?? this.config.edges.label_color,
           labelFontSize:
             headlessEdge.props.labelFontSize ??
             this.config.nodes.font_size_percent_default,
-          lineColor: headlessEdge.props.lineColor ?? this.config.edges.line_color,
+          lineColor:
+            headlessEdge.props.lineColor ?? this.config.edges.line_color,
           lineWidth: headlessEdge.props.lineWidth ?? 2,
           lineStyle: headlessEdge.props.lineStyle ?? 'solid',
           sourceArrow: headlessEdge.props.sourceArrow ?? 'none',
@@ -1097,7 +1099,8 @@ export class DiagramEditor extends EventBus {
     if (!labelElement || !descriptionElement) return;
 
     const fontScale =
-      (cell.get('fontSizePercent') || this.config.nodes.font_size_percent_default) /
+      (cell.get('fontSizePercent') ||
+        this.config.nodes.font_size_percent_default) /
       this.config.nodes.font_size_percent_default;
     cell.attr({
       label: { fontSize: this.config.nodes.label_font_size * fontScale },
@@ -1138,7 +1141,11 @@ export class DiagramEditor extends EventBus {
     );
 
     if (shapeType === 'diamond' || shapeType === 'circle') {
-      width = height = Math.max(width, height, this.config.nodes.min_squarish_size);
+      width = height = Math.max(
+        width,
+        height,
+        this.config.nodes.min_squarish_size,
+      );
     } else if (
       ['triangle', 'hexagon', 'pentagon', 'octagon'].includes(shapeType)
     ) {
@@ -1753,8 +1760,7 @@ export class DiagramEditor extends EventBus {
           this.config.nodes.default_width,
           this.config.nodes.default_height,
         );
-        const portRadius = this.config.diagram.port_radius;
-        const cell = node._buildCell(openPosition, joint.shapes, portRadius);
+        const cell = node._buildCell(openPosition, joint.shapes);
         cell.attr('label/text', node._label);
         node.cell = cell;
         node.editor = this;
@@ -1816,8 +1822,7 @@ export class DiagramEditor extends EventBus {
         width,
         height,
       );
-      const portRadius = this.config.diagram.port_radius;
-      const cell = node._buildCell(openPosition, joint.shapes, portRadius);
+      const cell = node._buildCell(openPosition, joint.shapes);
       cell.attr('label/text', node._label);
       node.cell = cell;
       node.editor = this;
